@@ -3,7 +3,7 @@ import time
 
 toc = time.time()
 
-niter = 1
+niter = 10
 for _ in range(niter):
     obs = model.Observation(imres=0.005, PA = 128)
     im  = model.Disk(inc=88.5, 
