@@ -27,6 +27,8 @@ class Disk:
         # Set Conditions
         if obs:
             self.imres = obs.imres * obs.distance * const.AU
+        else:
+            self.imres = 0.5 * const.AU
 
         self.Lstar = Lstar
         self.Mdust = Mdust*const.Msun 
@@ -58,6 +60,8 @@ class Disk:
             return
         if self.radial_func == 'gaussian':
             self.rbounds = profiles.gaussian.limits(*self.radial_params)
+            return
+        raise Exception("No bounds given and cannot find bounds from functional form")
 
     def surface_density(self):
         '''Calculate the disk density and temperature structure given the specified parameters'''
