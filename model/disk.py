@@ -14,7 +14,6 @@ class Disk:
                  Lstar=1.,
                  Mdust=1e-7,
                  inc=0,
-                 nr=500,
                  radial_func='powerlaw',
                  radial_params=[1.],
                  disk_edges=None,
@@ -35,7 +34,6 @@ class Disk:
         self.inc = inc * np.pi / 180.
 
         self.disk_edges = disk_edges
-        self.nr = nr
 
         self.radial_func = radial_func
         self.radial_params = radial_params
@@ -45,7 +43,6 @@ class Disk:
         self.sh_func = sh_func
         self.sh_params = sh_params
 
-        self.radial_bounds()
         self.surface_density()  # create 2d disk density structure
         self.incline() # produce 3d sky plane density
         
@@ -65,6 +62,8 @@ class Disk:
 
     def surface_density(self):
         '''Calculate the disk density and temperature structure given the specified parameters'''
+        self.radial_bounds()
+        self.nr = int(10 * (self.rbounds[1] - self.rbounds[0]) / self.imres)
         if self.radial_func == 'powerlaw':
             self.r   = np.logspace(np.log10(self.rbounds[0]),
                                    np.log10(self.rbounds[1]), 
@@ -144,6 +143,12 @@ class Disk:
 
         self.nX = int(2 * Xlim / self.imres)
         self.nY = int(2 * Ylim / self.imres)
+
+        if self.nX % 2 != 0:
+            self.nX += 1 # Makes sure that output image is compatible with
+                         # Galario -- nY will match nX by then so don't worry
+                         # about it
+
         nS = int(2 * Slim / self.imres)
         
         X = np.linspace(-Xlim, Xlim, self.nX)
@@ -187,4 +192,4 @@ class Disk:
         tau = cumtrapz(Knu_dust, self.S, axis=2, initial=0.)
         arg = Knu_dust*Snu*np.exp(-tau)
 
-        self.im = Image(trapz(arg, self.S, axis=2))
+        self.im = Image(trapz(arg, self.S, axis=2), obs.imres)

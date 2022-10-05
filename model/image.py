@@ -3,7 +3,7 @@ from scipy import ndimage
 from astropy.io import fits
 
 class Image:
-    def __init__(self, val, axes=None):
+    def __init__(self, val, imres=None, axes=None):
         self.val = val
         self.nx = np.shape(val)[1]
         self.ny = np.shape(val)[0]
@@ -27,13 +27,12 @@ class Image:
         
         self.ny = self.nx
 
+
     def rotate(self, obs):
         self.val = ndimage.rotate(self.val, 90-obs.PA, reshape=False)
 
-    def chi2(self, data):
-
     def sample(self, vis_temp, u, v, obs):
-        # sample image at u, v points
+
         data = data_vis[0].data['data']
         re = ((data[:,0,0,0,:,0,0]).astype(np.float64).copy(order='C'))
         im = ((data[:,0,0,0,:,0,1]).astype(np.float64).copy(order='C'))
