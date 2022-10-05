@@ -39,10 +39,11 @@ class UVDataset:
         
         data = data_vis[0].data['data']
 
-        self.re = (data[:,0,0,0,:,0,0]).astype(np.float64).copy(order='C')
-        self.im = (data[:,0,0,0,:,0,1]).astype(np.float64).copy(order='c')
+        self.re = (data[:,0,0,0,:,:,0]).astype(np.float64) 
+        self.im = (data[:,0,0,0,:,:,1]).astype(np.float64)
         
-        self.w = (data[:,0,0,0,:,0,2]).astype(np.float64).copy(order='C')
+        self.w = (data[:,0,0,0,:,:,2]).astype(np.float64)
+        
         self.u = (data_vis[0].data['UU']*self.freq0).astype(np.float64).copy(order='C')
         self.v = (data_vis[0].data['VV']*self.freq0).astype(np.float64).copy(order='C')
         
@@ -74,8 +75,17 @@ class UVDataset:
     def chi2(self, val, dxy):
         chi2 = 0
         for i in range(np.shape(self.re)[1]):
-            re = self.re[:,i].copy(order='C')
-            im = self.im[:,i].copy(order='C')
-            w = self.w[:,i].copy(order='C')
+            re = self.re[:,i,0].copy(order='C')
+            im = self.im[:,i,0].copy(order='C')
+            w = self.w[:,i,0].copy(order='C')
             chi2 += gd.chi2Image(val, dxy, self.u, self.v, re, im, w)
-        return chi2
+            
+
+            # Need to get this to work, file has nans right now
+            '''
+            re = self.re[:,i,1].copy(order='C')
+            im = self.im[:,i,1].copy(order='C')
+            w = self.w[:,i,1].copy(order='C')
+            chi2 += gd.chi2Image(val, dxy, self.u, self.v, re, im, w)
+            '''
+            return chi2
