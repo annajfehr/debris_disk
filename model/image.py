@@ -30,7 +30,9 @@ class Image:
     def rotate(self, obs):
         self.val = ndimage.rotate(self.val, 90-obs.PA, reshape=False)
 
-    def sample(self, vis_temp, u, v, obs, saveim=False):
+    def chi2(self, data):
+
+    def sample(self, vis_temp, u, v, obs):
         # sample image at u, v points
         data = data_vis[0].data['data']
         re = ((data[:,0,0,0,:,0,0]).astype(np.float64).copy(order='C'))
