@@ -35,7 +35,7 @@ vis.sample(model)
 where 'data_directory' is the filepath to a directory containing only uvfits
 files.
 
-From a disk model, calculate a r'$\chi^2' value from visibilities like
+From a disk model, calculate a $`\chi^2`$ value from visibilities like
 
 ```python
 vis.chi2(mod)
