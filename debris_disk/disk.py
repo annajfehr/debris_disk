@@ -208,7 +208,7 @@ class Disk:
         self.im.rotate(self.obs)
 
     def save(self, outfile='model.fits'):
-        self.im.save(self.obs)
+        self.im.save(self.obs, outfile)
 
     def image(self):
         return self.im

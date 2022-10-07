@@ -61,6 +61,6 @@ class Image:
         data_vis.writeto(modelout, overwrite=True)
         data_vis.close()
 
-    def save(self, obs):
+    def save(self, obs, outfile):
         hdu = fits.PrimaryHDU(self.val, obs.header(self.nx))
-        hdu.writeto(obs.modfile, overwrite=True, output_verify='fix')
+        hdu.writeto(outfile, overwrite=True, output_verify='fix')

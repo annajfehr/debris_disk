@@ -5,7 +5,7 @@ import numpy as np
 toc = time.time()
 
 
-vis = DD.UVData('../hd106906/mcmc_data/', mode='MCMC')
+vis = DD.UVData('../hd106906/mcmc_data/')
     
 obs_params = {'nu' : 345.8, # ghz
               'imres' : 0.005, # arcsec/pixel
@@ -20,12 +20,14 @@ mod  = DD.Disk(Lstar=1., # L_sun
                disk_edges=[22,42], # au 
                sh_func='linear', # options: constant
                sh_params=[0.025],  
-               vert_func='gaussian' 
+               vert_func='gaussian', 
                obs=obs_params)
 
 mod.square()
 mod.rotate()
 mod.save('example.fits')
+
+vis.sample(mod)
 
 tic = time.time()
 

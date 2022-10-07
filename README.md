@@ -24,3 +24,13 @@ model.square()
 model.rotate()
 model.save('example.fits')
 ```
+
+From a disk model, produce synthetic visibilities as
+
+```python
+vis=DD.UVDataset('data_directory') 
+vis.sample(model)
+```
+
+where 'data_directory' is the filepath to a directory containing only uvfits
+files.

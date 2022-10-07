@@ -7,7 +7,8 @@ class Observation:
                  nu = 345.8,
                  imres = 0.005,
                  distance = 100.,
-                 PA = 0.):
+                 PA = 0.,
+                 vis_file=None):
         if vis_file:
             pass
         else:

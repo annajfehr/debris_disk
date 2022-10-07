@@ -15,8 +15,16 @@ class UVData:
         self.mode = mode
         self.datasets = [UVDataset(directory+f, self.mode) for f in files]
     
-    def sample(self, val, dxy, resid_dir='resids/', mod_dir='mods/'):
+    def sample(self, disk=None, val=None, dxy=None, resid_dir='resids/', mod_dir='mods/'):
         assert (self.mode != 'MCMC')
+
+        if disk:
+            val = disk.image().val
+            dxy = disk.imres
+        else:
+            assert val, 'no image given'
+            assert dxy, 'image resolution needed'
+
         for i, dataset in enumerate(self.datasets):
             dataset.sample(val, 
                            dxy, 
