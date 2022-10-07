@@ -1,15 +1,21 @@
+'''
+Disk object. Initializes from radial/vertical/scale height 
+functions or from profiles, and produces 2D image
+'''
+
 import math
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
 from scipy import ndimage
 from scipy.integrate import cumtrapz,trapz
-import model.constants as const
-from model.image import Image
-from model import profiles
+import debris_disk.constants as const
+from debris_disk.image import Image
+from debris_disk.observation import Observation
+from debris_disk import profiles
 
 class Disk:
-    """Common class for circumstellar disk structure."""
+    """Class for circumstellar disk structure."""
     def __init__(self,
                  Lstar=1.,
                  Mdust=1e-7,
@@ -22,9 +28,11 @@ class Disk:
                  vert_func='gaussian',
                  vert_params=None,
                  obs=None):
-
         # Set Conditions
         if obs:
+            if type(obs) == dict:
+                obs = Observation(**obs)
+            self.obs = obs
             self.imres = obs.imres * obs.distance * const.AU
         else:
             self.imres = 0.5 * const.AU
@@ -98,7 +106,6 @@ class Disk:
             return True
 
     def find_sigma(self):
-        # Implement other profiles!!
         if self.radial_func == 'powerlaw':
             val = profiles.powerlaw.val(self.rr, *self.radial_params)
             norm = profiles.powerlaw.norm(*self.radial_params, *self.disk_edges)
@@ -193,3 +200,12 @@ class Disk:
         arg = Knu_dust*Snu*np.exp(-tau)
 
         self.im = Image(trapz(arg, self.S, axis=2), obs.imres)
+
+    def square(self):
+        self.im.square()
+
+    def rotate(self):
+        self.im.rotate(self.obs)
+
+    def save(self, outfile='model.fits'):
+        self.im.save(self.obs)

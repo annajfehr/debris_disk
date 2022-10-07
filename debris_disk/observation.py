@@ -1,4 +1,4 @@
-import model.constants as const
+import debris_disk.constants as const
 from astropy.io import fits
 import numpy as np
 
