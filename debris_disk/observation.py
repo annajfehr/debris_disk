@@ -7,9 +7,7 @@ class Observation:
                  nu = 345.8,
                  imres = 0.005,
                  distance = 100.,
-                 PA = 0.,
-                 modfile = 'model.fits',
-                 vis_file = None):
+                 PA = 0.):
         if vis_file:
             pass
         else:
@@ -17,7 +15,6 @@ class Observation:
             self.imres = imres
             
         self.distance = distance
-        self.modfile = modfile
         self.PA = PA
 
     def header(self, nX):

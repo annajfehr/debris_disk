@@ -209,3 +209,6 @@ class Disk:
 
     def save(self, outfile='model.fits'):
         self.im.save(self.obs)
+
+    def image(self):
+        return self.im
