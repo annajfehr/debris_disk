@@ -32,7 +32,14 @@ class UVData:
                            mod_dir+'mod'+str(i)+'.fits')
 
 
-    def chi2(self, val, dxy):
+    def chi2(self, disk=None, val=None, dxy=None):
+        if disk:
+            val = disk.image().val
+            dxy = disk.imres
+        else:
+            assert val, 'no image given'
+            assert dxy, 'image resolution needed'
+        
         chi2 = sum([dataset.chi2(val, dxy) for dataset in self.datasets])
         return chi2
 

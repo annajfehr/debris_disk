@@ -27,7 +27,7 @@ mod.square()
 mod.rotate()
 mod.save('example.fits')
 
-vis.sample(mod)
+vis.chi2(mod)
 
 tic = time.time()
 
