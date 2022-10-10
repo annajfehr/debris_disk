@@ -23,8 +23,8 @@ class Disk:
                  radial_func='powerlaw',
                  radial_params=[1.],
                  disk_edges=None,
-                 sh_func='linear',
-                 sh_params=[0.1],
+                 scale_height=None,
+                 aspect_ratio=None,
                  vert_func='gaussian',
                  vert_params=None,
                  obs=None):
@@ -47,9 +47,10 @@ class Disk:
         self.radial_params = radial_params
 
         self.vert_func = vert_func
+        self.vert_params = vert_params
 
-        self.sh_func = sh_func
-        self.sh_params = sh_params
+        self.scale_height = scale_height
+        self.aspect_ratio = aspect_ratio
 
         self.surface_density()  # create 2d disk density structure
         self.incline() # produce 3d sky plane density
@@ -57,6 +58,7 @@ class Disk:
         if obs:
             self.integrate(obs) # integrate to find image intensities
 
+    
     def radial_bounds(self):
         '''Find the inner and outer radius of the disk'''
         if self.disk_edges:
@@ -79,8 +81,8 @@ class Disk:
         else:
             self.r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
         
-        assert self.find_H() # Calculates scale height (i.e. standard deviation)
-                             # as a function of r
+        # Calculates scale height (i.e. standard deviation) as a function of r
+        assert self.set_H(), 'Missing scale height or aspect ratio' 
         
         self.find_zmax()
         self.nz = int(10 * self.zmax / self.imres)
@@ -99,11 +101,21 @@ class Disk:
                                              # density structures
         np.nan_to_num(self.rho2D, nan=1e-60) # Check for nans
 
-    def find_H(self):
-        if self.sh_func=='linear':
-            self.H = profiles.linear.val(self.r, *self.sh_params)
-            self.Hnorm = profiles.linear.norm(*self.sh_params, *self.rbounds)
+
+    def set_H(self):
+        if self.aspect_ratio:
+            if self.scale_height:
+                warnings.warn('Given aspect ratio and scale height,\
+                initializing vertical structure using fixed aspect ratio')
+            self.H = profiles.linear.val(self.r, self.aspect_ratio)
+            self.Hnorm = profiles.linear.norm(self.aspect_ratio, *self.rbounds)
             return True
+        if self.scale_height:
+            self.H = profiles.constant.val(self.r, self.scale_height)
+            self.Hnorm = profiles.constant.norm(self.scale_height,
+                                                *self.rbounds)
+            return True
+        return False
 
     def find_sigma(self):
         if self.radial_func == 'powerlaw':

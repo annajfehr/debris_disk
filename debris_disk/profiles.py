@@ -6,9 +6,11 @@ class powerlaw:
     def norm(p, Rin, Rout):
         return (1 / (p + 2)) * ((Rout**(p+2)) - (Rin**(p+2)))
 
-def constant(x, constant):
-    return np.fill(np.shape(x), constant)
-
+class constant:
+    def val(x, c):
+        np.fill(np.shape(x), c)
+    def norm(c, Rin, Rout):
+        return c * (Rout - Rin)
 
 class linear:
     def val(x, slope):
