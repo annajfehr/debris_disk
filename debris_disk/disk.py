@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
 from scipy import ndimage
-from scipy._im import cumtrapz,trapz
+from scipy.integrate import cumtrapz,trapz
 import debris_disk.constants as const
 from debris_disk.image import Image
 from debris_disk.observation import Observation
