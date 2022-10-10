@@ -16,12 +16,13 @@ mod  = DD.Disk(Lstar=1., # L_sun
                Mdust=1e-7, # Mdust
                inc=88.5, # Degrees
                radial_func='powerlaw', # options: gaussian
-               radial_params=[2.2], 
-               disk_edges=[22,42], # au 
-               sh_func='linear', # options: constant
-               sh_params=[0.025],  
+               radial_params=[2.2, 
+                              22 * DD.constants.AU, 
+                              42 * DD.constants.AU], 
+               aspect_ratio = 0.025,
                vert_func='gaussian', 
                obs=obs_params)
+
 
 mod.square()
 mod.rotate()
