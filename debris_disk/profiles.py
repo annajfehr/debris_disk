@@ -18,7 +18,6 @@ class double_powerlaw:
         assert alpha_in > 0, "alpha_in must be positive to find inner edge"
         assert alpha_out < 0, "alpha_out must be negative to find outer edge"
         rmax = rc + 353.2 + 2.94*(alpha_out**2) + 58.5*alpha_out
-        rmax = np.min(200, rmax)
         return [0, rmax]
 
 class constant:

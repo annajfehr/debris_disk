@@ -240,7 +240,9 @@ class Disk:
         if self.radial_func == 'double_powerlaw':
             self.rbounds = profiles.double_powerlaw.limits(*self.radial_params)
 
-        assert (self.rbounds[0]>0) and (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form"
+        self.rbounds[1] = min(self.rbounds[1], 250 * const.AU)
+
+        assert (self.rbounds[0]>=0) and (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form"
     
     def _zmax(self):
         """
