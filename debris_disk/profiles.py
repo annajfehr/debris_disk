@@ -48,9 +48,9 @@ class linear:
 
 class gaussian:
     def val(x, c, b=0):
-        return np.exp(-((x-b)/c)**2)
+        return np.exp(-((x-b)**2/(2*c**2)))
     def norm(c, b=0):
-        return c * np.sqrt(np.pi)
+        return c * np.sqrt(2*np.pi)
     def limits(c, b=0):
         fac = 2.628 # 99.9 percentile
         rmin = max(0, b - c * fac)

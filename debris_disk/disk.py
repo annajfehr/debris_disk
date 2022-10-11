@@ -170,6 +170,7 @@ class Disk:
         """
         Initialize density and temperature structures
         """
+
         self._rbounds() # Find radial extent
         
         # Set number of pixels in 2d radial array to 10 times the desired final
@@ -348,7 +349,7 @@ class Disk:
         """
 
         if self.vert_func =='gaussian':
-            H2d = np.outer(np.ones(self.nz), H)
+            H2d = np.outer(np.ones(self.nz), H/(2*np.sqrt(2*np.log(2))))
             return profiles.gaussian.val(zz, H2d)/(Hnorm*np.sqrt(np.pi))
     
     def _T2d(self, rr):
@@ -433,8 +434,8 @@ class Disk:
 
         kap = 10 * (obs.nu/1e12)**const.beta
         
-        BBF1 = 2.*const.h/(const.c**2)             # - prefactor for BB function
-        BBF2 = const.h/const.kB                    # - exponent prefactor for BB function
+        BBF1 = 2.*const.h/(const.c**2)  # - prefactor for BB function
+        BBF2 = const.h/const.kB         # - exponent prefactor for BB function
 
 
         Knu_dust = kap*self.rho      # - dust absorbing coefficient
@@ -491,3 +492,15 @@ class Disk:
         """
     
         return self.im
+
+    def beam_corr(self):
+        """
+        Alias for debris_disk.image.Image.beam_corr()
+        Applies primary beam correction
+
+        Returns
+        -------
+        None
+        """
+
+        self.im.beam_corr(self.obs)

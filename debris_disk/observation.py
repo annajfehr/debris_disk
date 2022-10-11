@@ -2,6 +2,7 @@ import debris_disk.constants as const
 from astropy.io import fits
 import numpy as np
 
+
 class Observation:
     def __init__(self,
                  nu = 345.8,
@@ -13,11 +14,13 @@ class Observation:
             pass
         else:
             self.nu = nu * const.Ghz
+            self.lamb = 3e8 / nu # wavelength [m]
             self.imres = imres
             
         self.distance = distance
         self.PA = PA
-
+        self.D = 12. # antennae diameter [m]
+    
     def header(self, nX):
         '''
         Produce Image fits header, assumes that NAXIS1 = NAXIS2 = nX
