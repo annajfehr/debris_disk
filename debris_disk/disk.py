@@ -235,7 +235,10 @@ class Disk:
             self.rbounds = profiles.gaussian.limits(*self.radial_params)
         
         if self.radial_func == 'powerlaw':
-            self.rbounds = profiles.powerlaw_edges.limits(*self.radial_params)
+            self.rbounds = profiles.powerlaw.limits(*self.radial_params)
+
+        if self.radial_func == 'double_powerlaw':
+            self.rbounds = profiles.double_powerlaw.limits(*self.radial_params)
 
         assert (self.rbounds[0]>0) and (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form"
     
@@ -289,8 +292,11 @@ class Disk:
         """
 
         if self.radial_func == 'powerlaw':
-            val = profiles.powerlaw_edges.val(rr, *self.radial_params)
-        
+            val = profiles.powerlaw.val(rr, *self.radial_params)
+
+        if self.radial_func == 'double_powerlaw':
+            val = profiles.powerlaw.val(rr, *self.radial_params)
+
         if self.radial_func == 'gaussian':
             val = profiles.gaussian.val(rr, *self.radial_params)
 
@@ -439,4 +445,5 @@ class Disk:
         -------
         Image object
         """
+    
         return self.im
