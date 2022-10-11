@@ -59,10 +59,6 @@ class Disk:
         Number of pixels along r axis in initial grid
     nz : int
         Number of pixels along z axis in initial grid
-    rr : array of floats
-        nr x nz array of r positions
-    zz : array of floats
-        nr x nz array of z positions
     rho2d : array of floats
         nr x nz array of surface densities at rr, zz positions
     T2d : array of floats
@@ -75,10 +71,6 @@ class Disk:
         Number of pixels along line of sight of 3d density array
     S : array of floats
         nx x ny x ns array of line of sight distance
-    X : array of floats
-        nx x ny array of x position
-    Y : array of floats
-        nx x ny array of y position
     rho : array of floats
         nx x ny x nX array of density
     T : array of floats
@@ -174,16 +166,43 @@ class Disk:
         self.scale_height = scale_height
         self.aspect_ratio = aspect_ratio
 
-        assert self._rho2d()  # create 2d disk density structure
-        assert self._T2d() # Calculate 2d temperature array
-        
+        self.structure2d()
         self.incline() # Produce 3d sky plane density
         
         if obs:
             self._im(obs) # Integrate to find image intensities
 
+    def structure2d(self):
+        """
+        Initialize density and temperature structures
+        """
+        self._rbounds() # Find radial extent
+        
+        # Set number of pixels in 2d radial array to 10 times the desired final
+        # image resolution
+        self.nr = int(10 * (self.rbounds[1] - self.rbounds[0]) / self.imres) 
 
-    def _rho2d(self):
+        # Define radial sampling grid -- for 'powerlaw' profile use logspaced
+        # grid, in all other cases use uniform sampling
+        if self.radial_func == 'powerlaw':
+            r = np.logspace(np.log10(self.rbounds[0]),
+                                   np.log10(self.rbounds[1]), 
+                                   self.nr)
+        else:
+            r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
+        
+        # Calculates scale height as a function of r
+        assert self._H(r), 'Missing scale height or aspect ratio' 
+        
+        self._zmax() # Find vertical extent
+        self.nz = int(10 * self.zmax / self.imres) # 10x final image resolution
+        z = np.linspace(0, self.zmax, self.nz)
+        
+        zz, rr = np.meshgrid(z, r)
+        assert self._rho2d(rr, zz)  # create 2d disk density structure
+        assert self._T2d(rr) # Calculate 2d temperature array
+
+    def _rho2d(self, rr, zz):
         """
         Initialize self.rho2d, a nr x nz matrix where self.rho2d[i, j] is the
         surface density of the disk (g/cm^2) at the location described by
@@ -194,32 +213,9 @@ class Disk:
         True upon success
         """
 
-        self._rbounds() # Find radial extent
         
-        # Set number of pixels in 2d radial array to 10 times the desired final
-        # image resolution
-        self.nr = int(10 * (self.rbounds[1] - self.rbounds[0]) / self.imres) 
-
-        # Define radial sampling grid -- for 'powerlaw' profile use logspaced
-        # grid, in all other cases use uniform sampling
-        if self.radial_func == 'powerlaw':
-            self.r   = np.logspace(np.log10(self.rbounds[0]),
-                                   np.log10(self.rbounds[1]), 
-                                   self.nr)
-        else:
-            self.r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
-        
-        # Calculates scale height as a function of r
-        assert self._H(), 'Missing scale height or aspect ratio' 
-        
-        self._zmax() # Find vertical extent
-        self.nz = int(10 * self.zmax / self.imres) # 10x final image resolution
-        self.z = np.linspace(0, self.zmax, self.nz)
-        
-        self.zz, self.rr = np.meshgrid(self.z, self.r)
-        
-        assert self._sigma() # Populates radial density structure
-        assert self._vert() # Populates vertical density structure
+        assert self._sigma(rr) # Populates radial density structure
+        assert self._vert(zz) # Populates vertical density structure
 
         self.rho2d = self.sigma * self.vert # Multiply radial and vertical
                                              # density structures
@@ -257,7 +253,7 @@ class Disk:
         if self.vert_func == 'gaussian':
             _, self.zmax = profiles.gaussian.limits(max_H)
     
-    def _H(self):
+    def _H(self, r):
         """Populate self.H, an array where self.H[i] is the scale height at
         self.r[i] and set self.Hnorm, the integral of the self.H
         
@@ -270,19 +266,19 @@ class Disk:
             if self.scale_height:
                 warnings.warn('Given aspect ratio and scale height,\
                 initializing vertical structure using fixed aspect ratio')
-            self.H = profiles.linear.val(self.r, self.aspect_ratio)
+            self.H = profiles.linear.val(r, self.aspect_ratio)
             self.Hnorm = profiles.linear.norm(self.aspect_ratio, *self.rbounds)
             return True
         
         if self.scale_height:
-            self.H = profiles.constant.val(self.r, self.scale_height)
+            self.H = profiles.constant.val(r, self.scale_height)
             self.Hnorm = profiles.constant.norm(self.scale_height,
                                                 *self.rbounds)
             return True
         
         return False
 
-    def _sigma(self):
+    def _sigma(self, rr):
         """
         Populate self.sigma, an nr x nz array where self.sigma[i,:] is the
         value of the radial profile at self.r[i]
@@ -293,15 +289,15 @@ class Disk:
         """
 
         if self.radial_func == 'powerlaw':
-            val = profiles.powerlaw_edges.val(self.rr, *self.radial_params)
+            val = profiles.powerlaw_edges.val(rr, *self.radial_params)
         
         if self.radial_func == 'gaussian':
-            val = profiles.gaussian.val(self.rr, *self.radial_params)
+            val = profiles.gaussian.val(rr, *self.radial_params)
 
         self.sigma = self.sigma_crit * val
         return True
 
-    def _vert(self):
+    def _vert(self, zz):
         """Populate self.vert, an nr x nz array where self.vert[i, j] is the
         value of the vertical profile at (self.r[i], self.z[j])
 
@@ -312,15 +308,15 @@ class Disk:
 
         if self.vert_func =='gaussian':
             H2d = np.outer(self.H, np.ones(self.nz))
-            self.vert = profiles.gaussian.val(self.zz, H2d)/(self.Hnorm*np.sqrt(np.pi))
+            self.vert = profiles.gaussian.val(zz, H2d)/(self.Hnorm*np.sqrt(np.pi))
             return True
     
-    def _T2d(self):
+    def _T2d(self, rr):
         """Populate self.T2d, an nr x nz array where self.T2d[i, j] is the
         temperature at (self.r[i], self.z[j])
 
         """
-        self.T2d = (self.L_star * const.Lsun / (16. * np.pi * self.rr**2 * const.sigmaB))**0.25
+        self.T2d = (self.L_star * const.Lsun / (16. * np.pi * rr**2 * const.sigmaB))**0.25
         return True
     
 
@@ -355,9 +351,6 @@ class Disk:
         S = np.linspace(-Slim, Slim, nS)
 
         xx, yy, self.S = np.meshgrid(X, Y, S)
-
-        self.X = xx[:,:,0]
-        self.Y = yy[:,:,0]
         
         #re-define disk midplane coordinates to be in line with radiative transfer grid
         tz = yy*sininc+self.S*cosinc # z locations of points
