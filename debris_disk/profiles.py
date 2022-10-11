@@ -17,8 +17,22 @@ class double_powerlaw:
     def limits(rc, alpha_in, alpha_out, gamma):
         assert alpha_in > 0, "alpha_in must be positive to find inner edge"
         assert alpha_out < 0, "alpha_out must be negative to find outer edge"
-        rmax = rc + 353.2 + 2.94*(alpha_out**2) + 58.5*alpha_out
+        rmax = rc + 5.28e15 + 2.94*(alpha_out**2) + 58.5*alpha_out
         return [0, rmax]
+
+class triple_powerlaw:
+    def val(r, Rin, Rout, alpha_in, alpha_mid, alpha_out, gamma_in, gamma_out):
+        S1=((r/Rin)**(-alpha_in*gamma_in) + \
+                (r/Rin)**(-alpha_mid*gamma_in))**(-1./gamma_in)
+        S2=((r/Rout)**(-alpha_mid*gamma_out) + \
+                (r/Rout)**(-alpha_out*gamma_out))**(-1./gamma_out)
+        return S1*S2 / (Rin/Rout)**alpha_mid
+    def limits(Rin, Rout, alpha_in, alpha_mid, alpha_out, gamma_in, gamma_out):
+        assert alpha_in > 0, "alpha_in must be positive to find inner edge"
+        assert alpha_out < 0, "alpha_out must be negative to find outer edge"
+        rmin = Rin - (1000/((alpha_in + 8.61)**(5/4)))
+        rmax = Rout + (1000/((alpha_out +8.61)**(5/4)))
+        return [min(rmin, 0), rmax]
 
 class constant:
     def val(x, c):
