@@ -9,14 +9,17 @@ obs_params = {'nu' : 345.8, # ghz
               'PA' : # degrees
               'distance' : 100} # parsecs
 
+rad_params = {'alpha' : 2.2,
+              'Rin' : 22 * DD.constants.AU,
+              'Rout' : 42 * DD.constants.AU}
+
 model = DD.Disk(Lstar=1., # L_sun
-                Mdust=1e-7, # M_sun
+                sigma_crit=1e-7, # g/m^2
                 inc=88.5, # Degrees
-                radial_func='powerlaw', # options: gaussian
-                radial_params=[2.2],
-                disk_edges=[22,42], # au
-                sh_func='linear', # options: constant
-                sh_params=[0.025],
+                radial_func='powerlaw', # options: double_powerlaw,
+                                        # triple_powerlaw, gaussian
+                radial_params=rad_params,
+                aspect_ratio = 0.025,
                 vert_func='gaussian',
                 obs=obs_params)
 
