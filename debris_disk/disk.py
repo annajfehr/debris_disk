@@ -155,6 +155,9 @@ class Disk:
         self.radial_func = radial_func
         self.radial_params = radial_params
 
+        self.gap = gap
+        self.gap_params = gap_params
+
         self.vert_func = vert_func
 
         self.scale_height = scale_height
@@ -179,12 +182,12 @@ class Disk:
 
         # Define radial sampling grid -- for 'powerlaw' profile use logspaced
         # grid, in all other cases use uniform sampling
-        if self.radial_func == 'powerlaw':
-            r = np.logspace(np.log10(self.rbounds[0]),
-                                   np.log10(self.rbounds[1]), 
-                                   self.nr)
-        else:
-            r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
+#        if self.radial_func == 'powerlaw':
+#            r = np.logspace(np.log10(self.rbounds[0]),
+#                                   np.log10(self.rbounds[1]), 
+#                                   self.nr)
+#        else:
+        r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
         
         # Calculates scale height as a function of r
         H, Hnorm = self.H(r)
@@ -270,6 +273,9 @@ class Disk:
 
         if self.vert_func == 'gaussian':
             _, self.zmax = profiles.gaussian.limits(H[-1])
+        
+        if self.vert_func == 'lorentzian':
+            _, self.zmax = profiles.lorentzian.limits(H[-1])
     
     def _rho2d(self, rr, zz, H, Hnorm):
         """
@@ -325,8 +331,12 @@ class Disk:
         if self.radial_func == 'gaussian':
             val = profiles.gaussian.val(rr, **self.radial_params)
 
-        self.val = val
-        self.rr = rr
+        if self.gap:
+            gap = 1-(self.gap_params.pop('depth') * \
+                    profiles.gaussian.val(rr, **self.gap_params))
+            val*=gap
+            self.g = gap
+
         return self.sigma_crit * val
 
     def vert(self, zz, H, Hnorm):
@@ -348,9 +358,13 @@ class Disk:
         profile at (self.r[i], self.z[j])
         """
 
+        H2d = np.outer(np.ones(self.nz), H/(2*np.sqrt(2*np.log(2))))
+        
         if self.vert_func =='gaussian':
-            H2d = np.outer(np.ones(self.nz), H/(2*np.sqrt(2*np.log(2))))
-            return profiles.gaussian.val(zz, H2d)/(Hnorm*np.sqrt(np.pi))
+            return profiles.gaussian.val(zz, H2d)/(Hnorm*np.sqrt(2*np.pi))
+    
+        if self.vert_func =='lorentzian':
+            return 2*np.pi*profiles.gaussian.val(zz, H2d)/(Hnorm)
     
     def _T2d(self, rr):
         """
@@ -408,12 +422,12 @@ class Disk:
         ty = yy*cosinc-self.S*sininc # y locations of points if disk was face on
         tr = np.sqrt(xx**2+ty**2)    # r locations of points
 
-        if self.radial_func == 'powerlaw':
-            slope = (self.nr-1)/np.log10(self.rbounds[1]/self.rbounds[0])
-            rind = slope * np.log10(tr/self.rbounds[0])
-        else:
-            slope = (self.nr-1)/(self.rbounds[1]-self.rbounds[0])
-            rind = slope * (tr-self.rbounds[0])
+#        if self.radial_func == 'powerlaw':
+#            slope = (self.nr-1)/np.log10(self.rbounds[1]/self.rbounds[0])
+#            rind = slope * np.log10(tr/self.rbounds[0])
+#        else:
+        slope = (self.nr-1)/(self.rbounds[1]-self.rbounds[0])
+        rind = slope * (tr-self.rbounds[0])
 
         slope = (self.nz-1)/(self.zmax)
         zind = slope * np.abs(tz)

@@ -9,6 +9,13 @@ class powerlaw:
         rmin = max(0, Rin - lin*fac)
         rmax = Rout + lout*fac
         return [rmin, rmax]
+    def params():
+        return {'r' : None,
+                'alpha' : None,
+                'Rin' : None,
+                'Rout' : None,
+                'lin' : 0.01,
+                'lout' : 0.01}
 
 class double_powerlaw:
     def val(r, rc, alpha_in, alpha_out, gamma):
@@ -47,12 +54,23 @@ class linear:
         return slope*(Rout**2-Rin**2)/2
 
 class gaussian:
-    def val(x, c, b=0):
-        return np.exp(-((x-b)**2/(2*c**2)))
-    def norm(c, b=0):
-        return c * np.sqrt(2*np.pi)
-    def limits(c, b=0):
+    def val(x, sigma, x0=0):
+        return np.exp(-((x-x0)**2/(2*sigma**2)))
+    def norm(sigma, x0=0):
+        return sigma * np.sqrt(2*np.pi)
+    def limits(sigma, x0=0):
         fac = 2.628 # 99.9 percentile
-        rmin = max(0, b - c * fac)
-        rmax = b + c * fac
+        rmin = max(0, x0 - sigma * fac)
+        rmax = x0 + sigma * fac
+        return [rmin, rmax]
+
+class lorentzian:
+    def val(x, gamma, b=0):
+        return 1/((x-b)**2 + (gamma/2)**2) 
+    def norm(gamma, b=0):
+        return gamma/(2*np.pi)
+    def limits(gamma, b=0):
+        fac = 15.8 # 99.9 percentile
+        rmin = max(0, b - gamma * fac)
+        rmax = b + gamma * fac
         return [rmin, rmax]
