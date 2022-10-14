@@ -32,15 +32,27 @@ class mcmc:
             self.gap_params = {'depth' : None,
                                'sigma' : None,
                                'x0' : None}
-            self.gap_params['depth'] = const_args.get('gap_depth', \
-                    self.gap_params[depth])
-            self.gap_params['sigma'] = const_args.get('gap_sigma', \
-                    self.gap_params[depth])
-            self.gap_params['x0'] = const_args.get('gap_x0', \
-                    self.gap_params[depth])
-
+            self.gap_params = _gap_params(self.gap_params, const_args)
+    
+    
     def lnpost(p, chain):
+        sys.stdout.flush()
+        if not check_boundary: 
+            return -np.inf
+
         return 1/(p[0] - 10) 
+
+    def check_boundary(self, pos):
+        for key in pos:
+            if pos[key] < self.ranges[key][0] or pos[key] > self.ranges[key][1]:
+                return False
+
+        return True
+
+    def unpack_params(self, pos):
+        radial_params = {key : pos.get(key, self.radial_params[key]) \
+                for key in self.radial_params}
+        gap_params = _gap_params(self.gap_params, pos)
 
     def run(self, 
             nwalkers=10, 
@@ -52,8 +64,6 @@ class mcmc:
         print("   Steps = " + str(nsteps))
         print("   Walkers = " + str(nwalkers))
         print("   Threads = " + str(nthreads))
-
-
 
         sampler = EnsembleSampler(nwalkers, self.ndim, mcmc.lnpost, args=[self])
 
@@ -72,3 +82,12 @@ class mcmc:
                 np.save(f, np.c_[pos, lnprob.T])
                 #new_step=[np.append(pos2[k], lnprobs[k]) for k in range(nwalkers)]
                 #np.save(f, lnpro
+    
+def _gap_params(gap_params, args):
+        gap_params['depth'] = args.get('gap_depth', \
+                self.gap_params[depth])
+        gap_params['sigma'] = args.get('gap_sigma', \
+                self.gap_params[depth])
+        gap_params['x0'] = args.get('gap_x0', \
+                self.gap_params[depth])
+        return gap_params
