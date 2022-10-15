@@ -91,8 +91,11 @@ class Disk:
                                 'Rout' : 40 * const.AU},
                  gap=False,
                  gap_params=None,
-                 scale_height=None,
-                 aspect_ratio=None,
+                 vert_params={'Hc' : 1.,
+                              'Rc' : 1.,
+                              'psi' : 1.},
+                 #scale_height=None,
+                 #aspect_ratio=None,
                  vert_func='gaussian',
                  obs=None):
         """
@@ -160,8 +163,9 @@ class Disk:
 
         self.vert_func = vert_func
 
-        self.scale_height = scale_height
-        self.aspect_ratio = aspect_ratio
+        self.vert_params = vert_params
+        #self.scale_height = scale_height
+        #self.aspect_ratio = aspect_ratio
 
         self.structure2d()
         self.incline() # Produce 3d sky plane density
@@ -190,7 +194,7 @@ class Disk:
         r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
         
         # Calculates scale height as a function of r
-        H, Hnorm = self.H(r)
+        H, Hnorm = self.H(r, **self.vert_params)
 
         self._zmax(H) # Find vertical extent
         self.nz = int(10 * self.zmax / self.imres) # 10x final image resolution
@@ -224,7 +228,7 @@ class Disk:
         self.rbounds[1] = min(self.rbounds[1], 250 * const.AU)
         assert (self.rbounds[0]>=0) and (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form"
     
-    def H(self, r):
+    def H(self, r, Hc, Rc, psi):
         """
         Determine scale height values
 
@@ -242,20 +246,12 @@ class Disk:
         Hnorm : float    
             integral of H
         """
-
-        if self.aspect_ratio:
-            if self.scale_height:
-                warnings.warn('Given aspect ratio and scale height,\
-                initializing vertical structure using fixed aspect ratio')
-            H = profiles.linear.val(r, self.aspect_ratio)
-            Hnorm = profiles.linear.norm(self.aspect_ratio, *self.rbounds)
-            return H, Hnorm
-        
-        if self.scale_height:
-            H = profiles.constant.val(r, self.scale_height)
-            Hnorm = profiles.constant.norm(self.scale_height,
-                                                *self.rbounds)
-            return H, Hnorm
+        H = Hc * (r / Rc)**psi
+        self.Harr = H
+        self.r = r
+        Hnorm = (Hc / (psi+1)) * ((self.rbounds[1] / Rc)**(psi+1) - \
+                (self.rbounds[0] / Rc)**(psi+1))
+        return H, Hnorm
     
     def _zmax(self, H):
         """

@@ -7,9 +7,7 @@ from emcee import EnsembleSampler
 class mcmc:
     def __init__(self,
                  uvdata=None, 
-                 obs=None, 
                  const_args=None, 
-                 p0=None, 
                  pranges=None, 
                  scale=None):
         self.locate_params(const_args)

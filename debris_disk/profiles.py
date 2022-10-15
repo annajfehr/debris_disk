@@ -17,6 +17,7 @@ class powerlaw:
                 'lin' : 0.01,
                 'lout' : 0.01}
 
+
 class double_powerlaw:
     def val(r, rc, alpha_in, alpha_out, gamma):
         return ((r/rc)**(-alpha_in*gamma) + \
