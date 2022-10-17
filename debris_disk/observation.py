@@ -8,7 +8,6 @@ class Observation:
                  nu = 345.8,
                  imres = 0.005,
                  distance = 100.,
-                 PA = 0.,
                  vis_file=None):
         if vis_file:
             pass
@@ -18,7 +17,6 @@ class Observation:
             self.imres = imres
             
         self.distance = distance
-        self.PA = PA
         self.D = 12. # antennae diameter [m]
     
     def header(self, nX):

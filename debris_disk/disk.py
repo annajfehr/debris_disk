@@ -94,8 +94,6 @@ class Disk:
                  vert_params={'Hc' : 1.,
                               'Rc' : 1.,
                               'psi' : 1.},
-                 #scale_height=None,
-                 #aspect_ratio=None,
                  vert_func='gaussian',
                  obs=None):
         """
@@ -136,7 +134,6 @@ class Disk:
         obs : dictionary of observation keywords, optional
             {'nu' : Central frequency of observation [ghz]
              'imres' : Resolution of final model image [arcsec/pixel]
-             'PA' : Position angle of disk [degrees]
              'distance' : Distance to object [parsecs]}
             obs is required to produce an on-sky image, see
             debris_disk.observation.Observation
@@ -468,7 +465,7 @@ class Disk:
 
         self.im.square()
 
-    def rotate(self):
+    def shift(self, PA=0.):
         """
         Alias for debris_disk.image.Image.rotate()
         Rotates self.im by the position angle
@@ -478,7 +475,7 @@ class Disk:
         None
         """
 
-        self.im.rotate(self.obs)
+        self.im.rotate(PA)
 
     def save(self, outfile='model.fits'):
         """

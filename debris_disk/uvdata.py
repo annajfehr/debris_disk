@@ -15,32 +15,39 @@ class UVData:
         self.mode = mode
         self.datasets = [UVDataset(directory+f, self.mode) for f in files]
     
-    def sample(self, disk=None, val=None, dxy=None, resid_dir='resids/', mod_dir='mods/'):
+    def sample(self, disk=None, val=None, dxy=None, PA=0, dRA=0., dDec=0., resid_dir='resids/', mod_dir='mods/'):
         assert (self.mode != 'MCMC')
 
         if disk:
-            val = disk.image().val
-            dxy = disk.imres
-        else:
-            assert val, 'no image given'
-            assert dxy, 'image resolution needed'
-
-        for i, dataset in enumerate(self.datasets):
-            dataset.sample(val, 
-                           dxy, 
-                           resid_dir+'resid'+str(i)+'.fits',
-                           mod_dir+'mod'+str(i)+'.fits')
-
-
-    def chi2(self, disk=None, val=None, dxy=None):
-        if disk:
-            val = disk.image().val
+            im = disk.image()
+            im.square()
+            val = im.val
             dxy = disk.imres
         else:
             assert val, 'no image given'
             assert dxy, 'image resolution needed'
         
-        chi2 = sum([dataset.chi2(val, dxy) for dataset in self.datasets])
+        for i, dataset in enumerate(self.datasets):
+            dataset.sample(val, 
+                           dxy, 
+                           resid_dir+'resid'+str(i)+'.fits',
+                           mod_dir+'mod'+str(i)+'.fits',
+                           PA=PA,
+                           dRA=dRA,
+                           dDec=dDec)
+
+
+    def chi2(self, disk=None, val=None, dxy=None, PA=0., dRA=0., dDec=0.):
+        if disk:
+            im = disk.image()
+            im.square()
+            val = im.val
+            dxy = disk.imres
+        else:
+            assert val, 'no image given'
+            assert dxy, 'image resolution needed'
+        
+        chi2 = sum([dataset.chi2(val, dxy, PA=PA, dRA=dRA, dDec=dDec) for dataset in self.datasets])
         return chi2
 
 class UVDataset:
@@ -68,10 +75,11 @@ class UVDataset:
         self.data = data
         self.data_vis = data_vis
 
-    def sample(self, val, dxy, residout='resid.fits', modout='mod.fits'):
+    def sample(self, val, dxy, residout='resid.fits', modout='mod.fits', PA=0.,
+            dRA=0., dDec=0.):
         model_vis = np.zeros(self.data.shape)
 
-        vis = gd.sampleImage(val, dxy, self.u, self.v)
+        vis = gd.sampleImage(val, dxy, self.u, self.v, PA=PA, dRA=dRA, dDec=dDec)
         for i in range(np.shape(model_vis)[4]):
             model_vis[:, 0, 0, 0, i, 0, 0] = vis.real
             model_vis[:, 0, 0, 0, i, 1, 0] = vis.real
@@ -83,11 +91,10 @@ class UVDataset:
         outfile.writeto(residout, overwrite=True)
         
         model_vis[:, 0, 0, 0, :, :, 2] = self.w  # weights (XX)
-        #model_vis[:, 0, 0, 0, :, 1, 2] = self.w  # weights (YY)
         outfile[0].data['data'] = model_vis
         outfile.writeto(modout, overwrite=True)
     
-    def chi2(self, val, dxy):
+    def chi2(self, val, dxy, PA=0., dRA=0., dDec=0.):
         chi2 = 0
         for i in range(np.shape(self.re)[1]):
             re = self.re[:,i,0].copy(order='C')
@@ -95,12 +102,8 @@ class UVDataset:
             w = self.w[:,i,0].copy(order='C')
             chi2 += gd.chi2Image(val, dxy, self.u, self.v, re, im, w)
             
-
-            # Need to get this to work, file has nans right now
-            '''
             re = self.re[:,i,1].copy(order='C')
             im = self.im[:,i,1].copy(order='C')
             w = self.w[:,i,1].copy(order='C')
             chi2 += gd.chi2Image(val, dxy, self.u, self.v, re, im, w)
-            '''
             return chi2

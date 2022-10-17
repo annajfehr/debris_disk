@@ -1,56 +1,74 @@
 import time
+import sys
 import numpy as np
 from debris_disk import profiles
+from debris_disk import Disk
 from schwimmbad import MPIPool
 from emcee import EnsembleSampler
 
 class mcmc:
     def __init__(self,
-                 uvdata=None, 
-                 const_args=None, 
-                 pranges=None, 
+                 uvdata, 
+                 obs_params,
+                 fixed_args,
+                 p0,
+                 pranges,
                  scale=None):
-        self.locate_params(const_args)
-        self.ndim = len(p0)
-        self.p0 = p0
-        self.scale=scale
+        self.uvdata=uvdata
+        self.obs_params=obs_params
+        self.parse_fixed_params(fixed_args)
+        self.param_dict_to_list(p0, scale, pranges)
 
-    def locate_params(self, const_args):
-        self.radial_func = const_args.pop('radial_func')
-        self.gap = const_args.pop('gap')
-        self.vert_func = const_args.pop('vert_func')
+    def parse_fixed_params(self, fixed_args):
+        try:
+            self.fixed_rad_params = fixed_args.pop('radial_params')
+        except:
+            self.fixed_rad_params = {}
         
-        if self.radial_func == 'powerlaw':
-            self.radial_params = profiles.powerlaw.params()
+        try:
+            self.fixed_vert_params = fixed_args.pop('vert_params')
+        except:
+            self.fixed_vert_params = {}
 
-        self.radial_params = {key : const_args.get(key, self.radial_params[key]) \
-                for key in self.radial_params}
+        self.fixed_args = fixed_args
+        
+    def param_dict_to_list(self, p0, scale, ranges):
+        self.params=[]
+        self.p0=[]
+        self.scale=[]
+        self.ranges=[]
 
-        if self.gap:
-            self.gap_params = {'depth' : None,
-                               'sigma' : None,
-                               'x0' : None}
-            self.gap_params = _gap_params(self.gap_params, const_args)
-    
-    
-    def lnpost(p, chain):
-        sys.stdout.flush()
-        if not check_boundary: 
-            return -np.inf
+        try:
+            rad_p0 = p0.pop('radial_params')
+            rad_scale = scale.pop('radial_params')
+            rad_ranges = ranges.pop('radial_params')
+            self.params += list(rad_p0.keys())
+            self.p0 += list(rad_p0.values())
+            self.scale += list(rad_scale.values())
+            self.ranges += list(rad_ranges.values())
+            self.num_rad = len(rad_p0)
+        except:
+            self.num_rad = 0.
+        
+        try:
+            vert_p0 = p0.pop('vert_params')
+            vert_scale = scale.pop('vert_params')
+            vert_ranges = ranges.pop('vert_params')
+            self.params += list(vert_p0.keys())
+            self.p0 += list(vert_p0.values())
+            self.scale += list(vert_scale.values())
+            self.ranges += list(vert_ranges.values())
+            self.num_vert = len(vert_p0)
+        except:
+            self.num_vert = 0.
 
-        return 1/(p[0] - 10) 
 
-    def check_boundary(self, pos):
-        for key in pos:
-            if pos[key] < self.ranges[key][0] or pos[key] > self.ranges[key][1]:
-                return False
-
-        return True
-
-    def unpack_params(self, pos):
-        radial_params = {key : pos.get(key, self.radial_params[key]) \
-                for key in self.radial_params}
-        gap_params = _gap_params(self.gap_params, pos)
+        self.params += list(p0.keys())
+        self.p0 += list(p0.values())
+        self.scale += list(scale.values())
+        self.ranges += list(ranges.values())
+        
+        self.ndim = len(self.p0)
 
     def run(self, 
             nwalkers=10, 
@@ -81,11 +99,47 @@ class mcmc:
                 #new_step=[np.append(pos2[k], lnprobs[k]) for k in range(nwalkers)]
                 #np.save(f, lnpro
     
-def _gap_params(gap_params, args):
-        gap_params['depth'] = args.get('gap_depth', \
-                self.gap_params[depth])
-        gap_params['sigma'] = args.get('gap_sigma', \
-                self.gap_params[depth])
-        gap_params['x0'] = args.get('gap_x0', \
-                self.gap_params[depth])
-        return gap_params
+    def lnpost(p, chain):
+        sys.stdout.flush()
+        if not chain.check_boundary(p): 
+            return -np.inf
+
+        disk_params, viewing_params = chain.param_list_to_dict(p)
+        mod = Disk(obs=chain.obs_params, **chain.fixed_args, **disk_params)
+        chi2 = chain.uvdata.chi2(mod, **viewing_params)
+        return -0.5 * chi2
+
+    def check_boundary(self, pos):
+        """
+        Check if any parameters are out of bounds
+        """
+        for i, p in enumerate(pos):
+            if p < self.ranges[i][0] or p > self.ranges[i][1]:
+                print(self.params[i], p, self.ranges[i])
+                return False
+
+        return True
+
+    def param_list_to_dict(self, pos):
+
+        rad_params = self.params[:self.num_rad]
+        rad_vals = pos[:self.num_rad]
+        radial_dict = {**self.fixed_rad_params,
+                       **dict(zip(rad_params, rad_vals))}
+        
+        vert_params = self.params[self.num_rad:self.num_rad+self.num_vert]
+        vert_vals = pos[:self.num_rad:self.num_rad+self.num_vert]
+        vert_dict = {**self.fixed_vert_params,
+                     **dict(zip(vert_params, vert_vals))}
+        
+        params = self.params[self.num_rad+self.num_vert:]
+        vals = pos[self.num_rad+self.num_vert:]
+        params_dict = dict(zip(params, vals))
+
+        params_dict['radial_params'] = radial_dict
+        params_dict['vert_params'] = vert_dict
+
+        viewing_params = {'PA' : params_dict.pop('PA')}
+
+        return params_dict, viewing_params
+

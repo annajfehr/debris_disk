@@ -24,7 +24,7 @@ class Image:
     -------
     square():
         Converts self.val to a square with sides nx
-    rotate():
+    shift(PA=0., dra=0., ddec=0):
         Rotates self.val by PA in observation dictionary
     save():
         Saves self.val to output file
@@ -66,8 +66,8 @@ class Image:
         self.ny = self.nx
         self.y = self.x
 
-    def rotate(self, obs):
-        self.val = ndimage.rotate(self.val, 90-obs.PA, reshape=False)
+    def shift(self, PA=0., dra=0., ddec=0.):
+        self.val = ndimage.rotate(self.val, 90-PA, reshape=False)
 
     def save(self, obs, outfile):
         hdu = fits.PrimaryHDU(self.val, obs.header(self.nx))
