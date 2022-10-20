@@ -33,7 +33,7 @@ class Image:
     """
 
     def __init__(self, val, imres=None, axes=None):
-        self.val = val
+        self.val = val * 1e23
         self.nx = np.shape(val)[1]
         self.ny = np.shape(val)[0]
 
@@ -66,8 +66,10 @@ class Image:
         self.ny = self.nx
         self.y = self.x
 
-    def shift(self, PA=0., dra=0., ddec=0.):
-        self.val = ndimage.rotate(self.val, 90-PA, reshape=False)
+    def rotate(self, PA=0., dra=0., ddec=0.):
+        self.val = ndimage.rotate(self.val, 180-PA, reshape=False)
+        zeros = np.zeros(np.shape(self.val))
+        self.val = np.maximum(self.val, zeros)
 
     def save(self, obs, outfile):
         hdu = fits.PrimaryHDU(self.val, obs.header(self.nx))

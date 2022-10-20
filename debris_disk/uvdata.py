@@ -22,11 +22,12 @@ class UVData:
             im = disk.image()
             im.square()
             val = im.val
-            dxy = disk.imres
+            dxy = im.imres * np.pi /(180*3600) 
         else:
             assert val, 'no image given'
             assert dxy, 'image resolution needed'
-        
+        self.val = val
+        self.dxy = dxy
         for i, dataset in enumerate(self.datasets):
             dataset.sample(val, 
                            dxy, 
@@ -58,7 +59,7 @@ class UVDataset:
 
         self.header = data_vis[0].header
         self.freq0 = self.header['CRVAL4']
-        
+
         data = data_vis[0].data['data']
 
         self.re = (data[:,0,0,0,:,:,0]).astype(np.float64) 
@@ -79,20 +80,24 @@ class UVDataset:
             dRA=0., dDec=0.):
         model_vis = np.zeros(self.data.shape)
 
-        vis = gd.sampleImage(val, dxy, self.u, self.v, PA=PA, dRA=dRA, dDec=dDec)
+        vis = gd.sampleImage(val, dxy, self.u, self.v)
         for i in range(np.shape(model_vis)[4]):
             model_vis[:, 0, 0, 0, i, 0, 0] = vis.real
             model_vis[:, 0, 0, 0, i, 1, 0] = vis.real
             model_vis[:, 0, 0, 0, i, 0, 1] = vis.imag
             model_vis[:, 0, 0, 0, i, 1, 1] = vis.imag
 
-        outfile = self.data_vis.copy()
-        outfile[0].data['data'] = self.data- model_vis
-        outfile.writeto(residout, overwrite=True)
+            model_vis[:, 0, 0, 0, i, 0, 2] =self.data[:,0,0,0,0,0,2]  # weights (XX)
+            model_vis[:, 0, 0, 0, i, 1, 2] =self.data[:,0,0,0,0,1,2]  # weights (XX)
+        #outfile = self.data_vis.copy()
+        #outfile[0].data['data'] = self.data- model_vis
+        self.data_vis[0].data['data'] = model_vis
+        self.data_vis.writeto(modout, overwrite=True)
+        self.data_vis.close()
+        #outfile.writeto(residout, overwrite=True)
         
-        model_vis[:, 0, 0, 0, :, :, 2] = self.w  # weights (XX)
-        outfile[0].data['data'] = model_vis
-        outfile.writeto(modout, overwrite=True)
+        #outfile[0].data['data'] = model_vis
+        #outfile.writeto(modout, overwrite=True)
     
     def chi2(self, val, dxy, PA=0., dRA=0., dDec=0.):
         chi2 = 0

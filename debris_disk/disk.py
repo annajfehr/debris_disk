@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import ndimage
-from scipy.integrate import cumtrapz,trapz
+from scipy.integrate import cumtrapz,trapezoid
 import debris_disk.constants as const
 from debris_disk.image import Image
 from debris_disk.observation import Observation
@@ -83,7 +83,7 @@ class Disk:
     """
     def __init__(self,
                  L_star=1.,
-                 sigma_crit = 1e-18,
+                 sigma_crit = 1e-18, # g/cm^3
                  inc=0,
                  radial_func='powerlaw',
                  radial_params={'alpha' : 1., 
@@ -450,8 +450,7 @@ class Disk:
         
         tau = cumtrapz(Knu_dust, self.S, axis=2, initial=0.)
         arg = Knu_dust*Snu*np.exp(-tau)
-
-        self.im = Image(trapz(arg, self.S, axis=2), obs.imres)
+        self.im = Image(trapezoid(arg, self.S, axis=2), obs.imres)
 
     def square(self):
         """
