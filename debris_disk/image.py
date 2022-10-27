@@ -56,18 +56,28 @@ class Image:
     def square(self):
         if self.nx == self.ny:
             return
-        assert self.nx > self.ny
-        start = int((self.nx-self.ny)/2)+1
-        end = int((self.nx+self.ny)/2)+1
-        im = np.zeros((self.nx, self.nx))
-        im[start:end] = self.val
-        self.val = im
         
-        self.ny = self.nx
-        self.y = self.x
+        if self.nx > self.ny:
+            start = int((self.nx-self.ny)/2)+1
+            end = int((self.nx+self.ny)/2)+1
+            im = np.zeros((self.nx, self.nx))
+            im[start:end] = self.val
+            self.val = im
+            
+            self.ny = self.nx
+            self.y = self.x
+        else:
+            start = int((self.ny-self.nx)/2)+1
+            end = int((self.nx+self.ny)/2)+1
+            im = np.zeros((self.ny, self.ny))
+            im[:,start:end] = self.val
+            self.val = im
+            
+            self.nx = self.ny
+            self.x = self.y
 
     def rotate(self, PA=0., dra=0., ddec=0.):
-        self.val = ndimage.rotate(self.val, 180-PA, reshape=False)
+        self.val = ndimage.rotate(self.val, 90-PA, reshape=False)
         zeros = np.zeros(np.shape(self.val))
         self.val = np.maximum(self.val, zeros)
 

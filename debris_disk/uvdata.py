@@ -16,12 +16,12 @@ class UVData:
         self.datasets = [UVDataset(directory+f, self.mode) for f in files]
     
     def sample(self, disk=None, val=None, dxy=None, PA=0, dRA=0., dDec=0., resid_dir='resids/', mod_dir='mods/'):
-        assert (self.mode != 'MCMC')
+        assert (self.mode != 'mcmc')
 
         if disk:
             im = disk.image()
             im.square()
-            val = im.val
+            val = im.val[::-1,:].copy(order='C')
             dxy = im.imres * np.pi /(180*3600) 
         else:
             assert val, 'no image given'
@@ -42,8 +42,8 @@ class UVData:
         if disk:
             im = disk.image()
             im.square()
-            val = im.val
-            dxy = disk.imres
+            val = im.val[::-1,:].copy(order='C')
+            dxy = im.imres * np.pi /(180*3600) 
         else:
             assert val, 'no image given'
             assert dxy, 'image resolution needed'
@@ -80,7 +80,7 @@ class UVDataset:
             dRA=0., dDec=0.):
         model_vis = np.zeros(self.data.shape)
 
-        vis = gd.sampleImage(val, dxy, self.u, self.v)
+        vis = gd.sampleImage(val, dxy, self.u, self.v, PA=PA)
         for i in range(np.shape(model_vis)[4]):
             model_vis[:, 0, 0, 0, i, 0, 0] = vis.real
             model_vis[:, 0, 0, 0, i, 1, 0] = vis.real
@@ -105,10 +105,10 @@ class UVDataset:
             re = self.re[:,i,0].copy(order='C')
             im = self.im[:,i,0].copy(order='C')
             w = self.w[:,i,0].copy(order='C')
-            chi2 += gd.chi2Image(val, dxy, self.u, self.v, re, im, w)
+            chi2 += gd.chi2Image(val, dxy, self.u, self.v, re, im, w, PA=PA,check=True)
             
             re = self.re[:,i,1].copy(order='C')
             im = self.im[:,i,1].copy(order='C')
             w = self.w[:,i,1].copy(order='C')
-            chi2 += gd.chi2Image(val, dxy, self.u, self.v, re, im, w)
-            return chi2
+            chi2 += gd.chi2Image(val, dxy, self.u, self.v, re, im, w, PA=PA)
+        return chi2

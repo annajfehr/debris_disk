@@ -1,5 +1,6 @@
 import time
 import sys
+import os
 import numpy as np
 from debris_disk import profiles
 from debris_disk import Disk
@@ -13,11 +14,11 @@ class mcmc:
                  fixed_args,
                  p0,
                  pranges,
-                 scale=None):
+                 pscale=None):
         self.uvdata=uvdata
         self.obs_params=obs_params
         self.parse_fixed_params(fixed_args)
-        self.param_dict_to_list(p0, scale, pranges)
+        self.param_dict_to_list(p0, pscale, pranges)
 
     def parse_fixed_params(self, fixed_args):
         try:
@@ -69,19 +70,25 @@ class mcmc:
         self.ranges += list(ranges.values())
         
         self.ndim = len(self.p0)
+        assert self.ndim == len(self.ranges)
+        assert self.ndim == len(self.scale)
 
     def run(self, 
             nwalkers=10, 
             nsteps=100, 
             nthreads=1, 
             restart=None,
-            outfile='mcmc.npy'):
+            outfile='mcmc.txt'):
         print("\nEmcee setup:")
         print("   Steps = " + str(nsteps))
         print("   Walkers = " + str(nwalkers))
         print("   Threads = " + str(nthreads))
 
-        sampler = EnsembleSampler(nwalkers, self.ndim, mcmc.lnpost, args=[self])
+
+        nwalkers = int(nwalkers)
+        nsteps = int(nsteps)
+        nthreads = int(nthreads)
+
 
         start = time.time()
         prob, state = None, None
@@ -89,16 +96,24 @@ class mcmc:
         init_pos = np.random.normal(loc=self.p0,
                                     size=(nwalkers,self.ndim),
                                     scale=self.scale)
-        run = sampler.sample(init_pos, iterations=nsteps, store=True)
 
         steps=[]
+
+        if nthreads > 1:
+            pool=MPIPool()
+            if not pool.is_master():
+                pool.wait()
+                sys.exit(0)
+        else:
+            pool=None
+
+        sampler = EnsembleSampler(nwalkers, self.ndim, mcmc.lnpost, args=[self], pool=pool)
+        run = sampler.sample(init_pos, iterations=nsteps, store=True)
         
-        with open(outfile, 'wb') as f:
-            for i, (pos, lnprob, _) in enumerate(run):
-                np.save(f, np.c_[pos, lnprob.T])
-                #new_step=[np.append(pos2[k], lnprobs[k]) for k in range(nwalkers)]
-                #np.save(f, lnpro
-    
+        for i, (pos, lnprob, _) in enumerate(run):
+            with open(outfile, 'a+') as f:
+                np.savetxt(f, np.c_[pos, lnprob.T])
+
     def lnpost(p, chain):
         sys.stdout.flush()
         if not chain.check_boundary(p): 
@@ -115,7 +130,6 @@ class mcmc:
         """
         for i, p in enumerate(pos):
             if p < self.ranges[i][0] or p > self.ranges[i][1]:
-                print(self.params[i], p, self.ranges[i])
                 return False
 
         return True

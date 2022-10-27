@@ -183,11 +183,6 @@ class Disk:
 
         # Define radial sampling grid -- for 'powerlaw' profile use logspaced
         # grid, in all other cases use uniform sampling
-#        if self.radial_func == 'powerlaw':
-#            r = np.logspace(np.log10(self.rbounds[0]),
-#                                   np.log10(self.rbounds[1]), 
-#                                   self.nr)
-#        else:
         r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
         
         # Calculates scale height as a function of r
@@ -401,7 +396,9 @@ class Disk:
         if self.nX % 2 != 0:
             self.nX += 1 # Require that the number of pixels along the long axis
                          # is even for compatability with galario
-        
+        if self.nY % 2 != 0:
+            self.nY += 1
+
         nS = int(2 * Slim / self.imres)
         
         X = np.linspace(-Xlim, Xlim, self.nX)
@@ -415,10 +412,6 @@ class Disk:
         ty = yy*cosinc-self.S*sininc # y locations of points if disk was face on
         tr = np.sqrt(xx**2+ty**2)    # r locations of points
 
-#        if self.radial_func == 'powerlaw':
-#            slope = (self.nr-1)/np.log10(self.rbounds[1]/self.rbounds[0])
-#            rind = slope * np.log10(tr/self.rbounds[0])
-#        else:
         slope = (self.nr-1)/(self.rbounds[1]-self.rbounds[0])
         rind = slope * (tr-self.rbounds[0])
 
@@ -428,6 +421,8 @@ class Disk:
         #interpolate onto coordinates xind,yind 
         self.T=ndimage.map_coordinates(self.T2d,[[zind],[rind]],order=1).reshape(self.nY,self.nX, nS) 
         self.rho=ndimage.map_coordinates(self.rho2d,[[zind],[rind]],order=1).reshape(self.nY, self.nX, nS)  
+        assert np.shape(self.S) == np.shape(self.T)
+        assert np.shape(self.S) == np.shape(self.rho)
 
     def _im(self, obs):
         """
@@ -447,7 +442,7 @@ class Disk:
 
         Knu_dust = kap*self.rho      # - dust absorbing coefficient
         Snu = BBF1*obs.nu**3/(np.exp((BBF2*obs.nu)/self.T)-1.) # - source function
-        
+
         tau = cumtrapz(Knu_dust, self.S, axis=2, initial=0.)
         arg = Knu_dust*Snu*np.exp(-tau)
         self.im = Image(trapezoid(arg, self.S, axis=2), obs.imres)
