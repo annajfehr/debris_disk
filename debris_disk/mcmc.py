@@ -4,6 +4,7 @@ import os
 import numpy as np
 from debris_disk import profiles
 from debris_disk import Disk
+import debris_disk as DD
 from schwimmbad import MPIPool
 from emcee import EnsembleSampler
 
@@ -107,53 +108,91 @@ class mcmc:
         else:
             pool=None
 
-        sampler = EnsembleSampler(nwalkers, self.ndim, mcmc.lnpost, args=[self], pool=pool)
+
+        sampler = EnsembleSampler(nwalkers, 
+                                  self.ndim, 
+                                  lnpost, 
+                                  args=[self.params,
+                                        self.ranges,
+                                        self.num_rad,
+                                        self.num_vert,
+                                        self.fixed_rad_params,
+                                        self.fixed_vert_params,
+                                        self.obs_params,
+                                        self.fixed_args,
+                                        self.uvdata], 
+                                  pool=pool)
+
         run = sampler.sample(init_pos, iterations=nsteps, store=True)
-        
+
+        print('Beginning Chain')
+
         for i, (pos, lnprob, _) in enumerate(run):
             with open(outfile, 'a+') as f:
                 np.savetxt(f, np.c_[pos, lnprob.T])
 
-    def lnpost(p, chain):
-        sys.stdout.flush()
-        if not chain.check_boundary(p): 
-            return -np.inf
 
-        disk_params, viewing_params = chain.param_list_to_dict(p)
-        mod = Disk(obs=chain.obs_params, **chain.fixed_args, **disk_params)
-        chi2 = chain.uvdata.chi2(mod, **viewing_params)
-        return -0.5 * chi2
 
-    def check_boundary(self, pos):
-        """
-        Check if any parameters are out of bounds
-        """
-        for i, p in enumerate(pos):
-            if p < self.ranges[i][0] or p > self.ranges[i][1]:
-                return False
+def param_list_to_dict(pos, 
+                       params,
+                       num_rad,
+                       num_vert, 
+                       fixed_rad_params,
+                       fixed_vert_params):
 
-        return True
+    rad_params = params[:num_rad]
+    rad_vals = pos[:num_rad]
+    radial_dict = {**fixed_rad_params,
+                   **dict(zip(rad_params, rad_vals))}
+    
+    vert_params = params[num_rad:num_rad+num_vert]
+    vert_vals = pos[num_rad:num_rad+num_vert]
+    vert_dict = {**fixed_vert_params,
+                 **dict(zip(vert_params, vert_vals))}
+    
+    params = params[num_rad+num_vert:]
+    vals = pos[num_rad+num_vert:]
+    params_dict = dict(zip(params, vals))
 
-    def param_list_to_dict(self, pos):
+    params_dict['radial_params'] = radial_dict
+    params_dict['vert_params'] = vert_dict
 
-        rad_params = self.params[:self.num_rad]
-        rad_vals = pos[:self.num_rad]
-        radial_dict = {**self.fixed_rad_params,
-                       **dict(zip(rad_params, rad_vals))}
-        
-        vert_params = self.params[self.num_rad:self.num_rad+self.num_vert]
-        vert_vals = pos[:self.num_rad:self.num_rad+self.num_vert]
-        vert_dict = {**self.fixed_vert_params,
-                     **dict(zip(vert_params, vert_vals))}
-        
-        params = self.params[self.num_rad+self.num_vert:]
-        vals = pos[self.num_rad+self.num_vert:]
-        params_dict = dict(zip(params, vals))
+    viewing_params = {'PA' : params_dict.pop('PA')}
 
-        params_dict['radial_params'] = radial_dict
-        params_dict['vert_params'] = vert_dict
+    return params_dict, viewing_params
 
-        viewing_params = {'PA' : params_dict.pop('PA')}
+def check_boundary(ranges, pos):
+    """
+    Check if any parameters are out of bounds
+    """
+    for i, p in enumerate(pos):
+        if p < ranges[i][0] or p > ranges[i][1]:
+            return False
 
-        return params_dict, viewing_params
+    return True
 
+def lnpost(p,
+           params,
+           ranges,
+           num_rad,
+           num_vert, 
+           fixed_rad_params,
+           fixed_vert_params,
+           obs_params,
+           fixed_args,
+           uvdata):
+    sys.stdout.flush()
+    if not check_boundary(ranges, p): 
+        return -np.inf
+
+    disk_params, viewing_params = param_list_to_dict(p, 
+                                                     params, 
+                                                     num_rad,
+                                                     num_vert,
+                                                     fixed_rad_params,
+                                                     fixed_vert_params)
+    
+    mod = Disk(obs=obs_params, **fixed_args, **disk_params)
+    vis = DD.UVData(uvdata, mode='mcmc')
+    chi2 = vis.chi2(mod, **viewing_params)
+    return -0.5 * chi2

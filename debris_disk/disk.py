@@ -217,7 +217,7 @@ class Disk:
         if self.radial_func == 'triple_powerlaw':
             self.rbounds = profiles.triple_powerlaw.limits(**self.radial_params)
         
-        self.rbounds[1] = min(self.rbounds[1], 250 * const.AU)
+        self.rbounds[1] = min(self.rbounds[1], 500 * const.AU)
         assert (self.rbounds[0]>=0) and (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form"
     
     def H(self, r, Hc, Rc, psi):
