@@ -20,8 +20,9 @@ class powerlaw:
 
 class double_powerlaw:
     def val(r, rc, alpha_in, alpha_out, gamma):
-        return ((r/rc)**(-alpha_in*gamma) + \
+        value = ((r/rc)**(-alpha_in*gamma) + \
                 (r/rc)**(-alpha_out*gamma))**(-1/gamma)
+        return value / np.max(value)
     def limits(rc, alpha_in, alpha_out, gamma):
         assert alpha_in > 0, "alpha_in must be positive to find inner edge"
         assert alpha_out < 0, "alpha_out must be negative to find outer edge"

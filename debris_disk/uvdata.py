@@ -46,15 +46,12 @@ class UVData:
         im.square()
         val = im.val[::-1,:].copy(order='C')
 
-        min_pixels = int(self._mrs() / dxy)+1
+        min_pixels = int(2 * self._mrs() / dxy)+1
 
         if min_pixels % 2 != 0:
             min_pixels+=1
         if min_pixels > np.shape(val)[0]:
             val = fill_in(val, min_pixels)
-
-        FOV= np.shape(val)[0] * dxy
-        mrs = self._mrs()
 
         return val, dxy
 

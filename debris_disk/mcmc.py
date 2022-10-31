@@ -8,7 +8,32 @@ import debris_disk as DD
 from schwimmbad import MPIPool
 from emcee import EnsembleSampler
 
-class mcmc:
+class MCMC:
+    """
+    A class that holds an mcmc chain.
+
+    ...
+    
+    Attributes
+    ----------
+    uvdata : string
+        Filepath of uv fits directory
+    obs_params : dict
+        Dictionary of observation parameters
+            nu : frequency in ghz
+            imres : model resolution in " / pixels
+            distance : distance in pc
+    fixed_args : dict
+        Dictionary of fixed parameters
+        Should include
+            radial_func
+            vert_func
+        and disk model parameters not being fitted
+    p0 : dict
+        Initial guesses for parameters to fit
+    pranges : dict
+        
+    """
     def __init__(self,
                  uvdata, 
                  obs_params,
@@ -16,12 +41,26 @@ class mcmc:
                  p0,
                  pranges,
                  pscale=None):
+        
         self.uvdata=uvdata
         self.obs_params=obs_params
         self.parse_fixed_params(fixed_args)
         self.param_dict_to_list(p0, pscale, pranges)
 
     def parse_fixed_params(self, fixed_args):
+        """Place fixed_args into self.fixed_rad_params, self.fixed_vert_params, 
+        and self.fixed_args.
+
+        Parameters
+        ----------
+        fixed_args : dict
+            Dictionary of fixed arguments
+
+        Returns
+        -------
+        None
+        """
+
         try:
             self.fixed_rad_params = fixed_args.pop('radial_params')
         except:
@@ -35,6 +74,28 @@ class mcmc:
         self.fixed_args = fixed_args
         
     def param_dict_to_list(self, p0, scale, ranges):
+        """Place initial parameter guesses, scale, and ranges into radial,
+        vertical, and other dictionaries.
+
+        Parameters
+        ----------
+        p0 : dict
+            Initial guesses for free parameters
+        scale : dict
+            Scatter for initial walker positions
+        ranges : dict
+            Limits on walker position
+
+        The keys for p0, scale, and ranges must all be identical, as in
+        subdictionaries
+
+        Returns
+        -------
+        None
+        """
+        assert p0.keys == ranges.keys
+        assert p0.keys == scale.keys
+        
         self.params=[]
         self.p0=[]
         self.scale=[]
@@ -42,8 +103,12 @@ class mcmc:
 
         try:
             rad_p0 = p0.pop('radial_params')
-            rad_scale = scale.pop('radial_params')
             rad_ranges = ranges.pop('radial_params')
+            rad_scale = scale.pop('radial_params')
+            
+            assert rad_p0.keys == rad_ranges.keys
+            assert rad_p0.keys == rad_scale.keys
+            
             self.params += list(rad_p0.keys())
             self.p0 += list(rad_p0.values())
             self.scale += list(rad_scale.values())
@@ -54,8 +119,12 @@ class mcmc:
         
         try:
             vert_p0 = p0.pop('vert_params')
-            vert_scale = scale.pop('vert_params')
             vert_ranges = ranges.pop('vert_params')
+            vert_scale = scale.pop('vert_params')
+            
+            assert vert_p0.keys == vert_ranges.keys
+            assert vert_p0.keys == vert_scale.keys
+
             self.params += list(vert_p0.keys())
             self.p0 += list(vert_p0.values())
             self.scale += list(vert_scale.values())
@@ -64,15 +133,12 @@ class mcmc:
         except:
             self.num_vert = 0.
 
-
         self.params += list(p0.keys())
         self.p0 += list(p0.values())
         self.scale += list(scale.values())
         self.ranges += list(ranges.values())
         
         self.ndim = len(self.p0)
-        assert self.ndim == len(self.ranges)
-        assert self.ndim == len(self.scale)
 
     def run(self, 
             nwalkers=10, 
@@ -139,7 +205,6 @@ def param_list_to_dict(pos,
                        num_vert, 
                        fixed_rad_params,
                        fixed_vert_params):
-
     rad_params = params[:num_rad]
     rad_vals = pos[:num_rad]
     radial_dict = {**fixed_rad_params,
@@ -161,6 +226,7 @@ def param_list_to_dict(pos,
 
     return params_dict, viewing_params
 
+
 def check_boundary(ranges, pos):
     """
     Check if any parameters are out of bounds
@@ -170,6 +236,7 @@ def check_boundary(ranges, pos):
             return False
 
     return True
+
 
 def lnpost(p,
            params,
