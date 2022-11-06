@@ -10,7 +10,7 @@ Classes:
 """
 
 from .disk import Disk
-from .mcmc import mcmc
+from .mcmc import MCMC
 from .observation import Observation
 from .image import Image
 

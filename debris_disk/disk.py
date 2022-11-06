@@ -149,26 +149,40 @@ class Disk:
 
         self.L_star = L_star
         self.sigma_crit = sigma_crit
-        self.inc = inc * np.pi / 180.
-
+        
+        if inc < 90:
+            self.inc = inc * np.pi / 180.
+        else:
+            self.inc = (180 - inc) * np.pi/180
 
         self.radial_func = radial_func
-        self.radial_params = radial_params
+        self.radial_params = self.rp_convert(radial_params)
 
         self.gap = gap
         self.gap_params = gap_params
 
         self.vert_func = vert_func
 
-        self.vert_params = vert_params
-        #self.scale_height = scale_height
-        #self.aspect_ratio = aspect_ratio
+        self.vert_params = self.vp_convert(vert_params)
 
         self.structure2d()
         self.incline() # Produce 3d sky plane density
         
         if obs:
             self._im(obs) # Integrate to find image intensities
+
+    def rp_convert(self, params):
+        if self.radial_func == 'powerlaw':
+            return profiles.powerlaw.conversion(params, const.AU)
+        if self.radial_func == 'double_powerlaw':
+            return profiles.double_powerlaw.conversion(params, const.AU)
+        if self.radial_func == 'triple_powerlaw':
+            return profiles.triple_powerlaw.conversion(params, const.AU)
+    
+    def vp_convert(self, vert_params):
+        vert_params['Hc'] *= const.AU
+        vert_params['Rc'] *= const.AU
+        return vert_params
 
     def structure2d(self):
         """
@@ -185,7 +199,7 @@ class Disk:
         # grid, in all other cases use uniform sampling
         r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
         
-        # Calculates scale height as a function of r
+        # Calculates scale heightm as a function of r
         H, Hnorm = self.H(r, **self.vert_params)
 
         self._zmax(H) # Find vertical extent

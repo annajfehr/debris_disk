@@ -93,8 +93,9 @@ class MCMC:
         -------
         None
         """
-        assert p0.keys == ranges.keys
-        assert p0.keys == scale.keys
+
+        assert set(p0.keys()) == set(ranges.keys())
+        assert set(p0.keys()) == set(scale.keys())
         
         self.params=[]
         self.p0=[]
@@ -143,7 +144,7 @@ class MCMC:
     def run(self, 
             nwalkers=10, 
             nsteps=100, 
-            nthreads=1, 
+            parallel=False, 
             restart=None,
             outfile='mcmc.txt'):
         print("\nEmcee setup:")
@@ -166,7 +167,7 @@ class MCMC:
 
         steps=[]
 
-        if nthreads > 1:
+        if parallel:
             pool=MPIPool()
             if not pool.is_master():
                 pool.wait()
@@ -260,6 +261,7 @@ def lnpost(p,
                                                      fixed_vert_params)
     
     mod = Disk(obs=obs_params, **fixed_args, **disk_params)
+    mod.beam_corr()
     vis = DD.UVData(uvdata, mode='mcmc')
     chi2 = vis.chi2(mod, **viewing_params)
     return -0.5 * chi2
