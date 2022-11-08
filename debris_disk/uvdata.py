@@ -4,7 +4,7 @@ from astropy.io import fits
 import galario.double as gd
 
 class UVData:
-    def __init__(self, directory, mode=None):
+    def __init__(self, directory, filetype='txt', mode=None):
         '''
         Initialize UVData object from the set of files in directory
         '''
@@ -13,7 +13,7 @@ class UVData:
 
         self.directory = directory
         self.mode = mode
-        self.datasets = [UVDataset(directory+f, self.mode) for f in files]
+        self.datasets = [UVDataset(directory+f, self.mode, filetype) for f in files]
 
     def sample(self, disk=None, val=None, dxy=None, PA=0, dRA=0., dDec=0., resid_dir='resids/', mod_dir='mods/'):
         assert (self.mode != 'mcmc')
@@ -47,7 +47,7 @@ class UVData:
         val = im.val[::-1,:].copy(order='C')
 
         min_pixels = int(2 * self._mrs() / dxy)+1
-
+        
         if min_pixels % 2 != 0:
             min_pixels+=1
         if min_pixels > np.shape(val)[0]:
@@ -59,25 +59,37 @@ class UVData:
         return max([dataset.mrs() for dataset in self.datasets])
 
 class UVDataset:
-    def __init__(self, f, mode):
+    def __init__(self, f, mode, filetype):
         self.file = f
 
-        data_vis = fits.open(f)
+        if filetype == 'fits':
+            data_vis = fits.open(f)
 
-        self.header = data_vis[0].header
-        self.freq0 = self.header['CRVAL4']
+            self.header = data_vis[0].header
+            self.freq0 = self.header['CRVAL4']
 
-        data = data_vis[0].data['data']
+            data = data_vis[0].data['data']
 
-        self.re = (data[:,0,0,0,:,:,0]).astype(np.float64) 
-        self.im = (data[:,0,0,0,:,:,1]).astype(np.float64)
-        
-        self.w = (data[:,0,0,0,:,:,2]).astype(np.float64)
-        
-        self.u = (data_vis[0].data['UU']*self.freq0).astype(np.float64).copy(order='C')
-        self.v = (data_vis[0].data['VV']*self.freq0).astype(np.float64).copy(order='C')
-        
-        if mode =='MCMC':
+            self.re = (data[:,0,0,0,:,:,0]).astype(np.float64) 
+            self.im = (data[:,0,0,0,:,:,1]).astype(np.float64)
+            
+            self.w = (data[:,0,0,0,:,:,2]).astype(np.float64)
+            
+            self.u = (data_vis[0].data['UU']*self.freq0).astype(np.float64).copy(order='C')
+            self.v = (data_vis[0].data['VV']*self.freq0).astype(np.float64).copy(order='C')
+
+        if filetype == 'txt':
+            data = np.loadtxt(f)
+
+            self.u = data[:, 1]
+            self.v = data[:, 2]
+
+            self.re = data[:, 3]
+            self.im = data[:, 4]
+
+            self.w = data[:, 5]
+
+        if mode =='mcmc':
             return
 
         self.data = data
