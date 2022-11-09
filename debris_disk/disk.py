@@ -143,9 +143,9 @@ class Disk:
             if type(obs) == dict:
                 obs = Observation(**obs)
             self.obs = obs
-            self.imres = obs.imres * obs.distance * const.AU
+            self.modres = obs.imres * obs.distance * const.AU
         else:
-            self.imres = 0.5 * const.AU
+            self.modres = 0.5 * const.AU
 
         self.L_star = L_star
         self.sigma_crit = sigma_crit
@@ -156,14 +156,14 @@ class Disk:
             self.inc = (180 - inc) * np.pi/180
 
         self.radial_func = radial_func
-        self.radial_params = self.rp_convert(radial_params)
+        self.radial_params = self.rp_convert(radial_params.copy())
 
         self.gap = gap
         self.gap_params = gap_params
 
         self.vert_func = vert_func
 
-        self.vert_params = self.vp_convert(vert_params)
+        self.vert_params = self.vp_convert(vert_params.copy())
 
         self.structure2d()
         self.incline() # Produce 3d sky plane density
@@ -193,7 +193,7 @@ class Disk:
         
         # Set number of pixels in 2d radial array to 10 times the desired final
         # image resolution
-        self.nr = int(10 * (self.rbounds[1] - self.rbounds[0]) / self.imres) 
+        self.nr = int(10 * (self.rbounds[1] - self.rbounds[0]) / self.modres) 
 
         # Define radial sampling grid -- for 'powerlaw' profile use logspaced
         # grid, in all other cases use uniform sampling
@@ -203,7 +203,7 @@ class Disk:
         H, Hnorm = self.H(r, **self.vert_params)
 
         self._zmax(H) # Find vertical extent
-        self.nz = int(10 * self.zmax / self.imres) # 10x final image resolution
+        self.nz = int(10 * self.zmax / self.modres) # 10x final image resolution
         z = np.linspace(0, self.zmax, self.nz)
         
         rr, zz = np.meshgrid(r, z)
@@ -404,8 +404,8 @@ class Disk:
         Xlim = self.rbounds[1]
         Ylim = ((self.rbounds[1] * cosinc) + (self.zmax * sininc))
 
-        self.nX = int(2 * Xlim / self.imres)
-        self.nY = int(2 * Ylim / self.imres)
+        self.nX = int(2 * Xlim / self.modres)
+        self.nY = int(2 * Ylim / self.modres)
 
         if self.nX % 2 != 0:
             self.nX += 1 # Require that the number of pixels along the long axis
@@ -413,7 +413,7 @@ class Disk:
         if self.nY % 2 != 0:
             self.nY += 1
 
-        nS = int(2 * Slim / self.imres)
+        nS = int(2 * Slim / self.modres)
         
         X = np.linspace(-Xlim, Xlim, self.nX)
         Y = np.linspace(-Ylim, Ylim, self.nY)
@@ -441,25 +441,29 @@ class Disk:
     def _im(self, obs):
         """
         Initialize an image object of the on-sky disk brightness using
-        Rosenfeld+13 eq. 1
+        Rosenfeld+13a eq. 1
 
         Returns
         -------
         None
         """
-
-        kap = 10 * (obs.nu/1e12)**const.beta
-        
+        self.ims = []
+    
         BBF1 = 2.*const.h/(const.c**2)  # - prefactor for BB function
         BBF2 = const.h/const.kB         # - exponent prefactor for BB function
+        
+        tau = cumtrapz(self.rho, self.S, axis=2, initial=0.)
+        
+        for n in obs.nu:
+            kap = 10 * (n/1e12)**const.beta
 
+            tau *= kap
 
-        Knu_dust = kap*self.rho      # - dust absorbing coefficient
-        Snu = BBF1*obs.nu**3/(np.exp((BBF2*obs.nu)/self.T)-1.) # - source function
+            Knu_dust = kap*self.rho      # - dust absorbing coefficient
+            Snu = BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
 
-        tau = cumtrapz(Knu_dust, self.S, axis=2, initial=0.)
-        arg = Knu_dust*Snu*np.exp(-tau)
-        self.im = Image(trapezoid(arg, self.S, axis=2), obs.imres)
+            arg = Knu_dust*Snu*np.exp(-tau)
+            self.ims.append(Image(trapezoid(arg, self.S, axis=2), obs.imres))
 
     def square(self):
         """
@@ -470,8 +474,8 @@ class Disk:
         -------
         None
         """
-
-        self.im.square()
+        for im in self.ims:
+            im.square()
 
     def shift(self, PA=0.):
         """
@@ -485,7 +489,7 @@ class Disk:
 
         self.im.rotate(PA)
 
-    def save(self, outfile='model.fits'):
+    def save(self, outfile='model'):
         """
         Alias for debris_disk.image.Image.save()
         Saves self.im at outfile
@@ -494,8 +498,8 @@ class Disk:
         -------
         None
         """
-
-        self.im.save(self.obs, outfile)
+        for im in self.ims:
+            im.save(self.obs, outfile+'1.fits')
 
     def image(self):
         """
@@ -506,7 +510,7 @@ class Disk:
         Image object
         """
     
-        return self.im
+        return self.ims
 
     def beam_corr(self):
         """
