@@ -12,7 +12,7 @@ class Observation:
         if vis_file:
             pass
         else:
-            self.nu = nu * const.Ghz
+            self.nu = nu 
             self.lamb = 3e8 / nu # wavelength [m]
             self.imres = imres
             

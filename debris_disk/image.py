@@ -2,6 +2,7 @@ import numpy as np
 from scipy import ndimage
 from astropy.io import fits
 from debris_disk import profiles
+from debris_disk import constants as const
 
 class Image:
     """
@@ -85,10 +86,11 @@ class Image:
         hdu = fits.PrimaryHDU(self.val, obs.header(self.nx))
         hdu.writeto(outfile, overwrite=True, output_verify='fix')
 
-    def beam_corr(self, obs):
+    def beam_corr(self, nu, D):
+        lamb = const.c / nu
         xx, yy = np.meshgrid(self.x, self.y)
         dst = np.sqrt(xx**2+yy**2)
-        sigma = 1.13 * obs.lamb/obs.D / (2 * np.sqrt(2 * np.log(2)))
+        sigma = 1.13 * lamb / D / (2 * np.sqrt(2 * np.log(2)))
 
         norm = profiles.gaussian.norm(dst, sigma)**2
         self.beam = profiles.gaussian.val(dst, sigma) 

@@ -456,7 +456,6 @@ class Disk:
         
         for n in obs.nu:
             kap = 10 * (n/1e12)**const.beta
-
             tau *= kap
 
             Knu_dust = kap*self.rho      # - dust absorbing coefficient
@@ -464,6 +463,7 @@ class Disk:
 
             arg = Knu_dust*Snu*np.exp(-tau)
             self.ims.append(Image(trapezoid(arg, self.S, axis=2), obs.imres))
+
 
     def square(self):
         """
@@ -498,8 +498,8 @@ class Disk:
         -------
         None
         """
-        for im in self.ims:
-            im.save(self.obs, outfile+'1.fits')
+        for i, im in enumerate(self.ims):
+            im.save(self.obs, outfile+str(i)+'.fits')
 
     def image(self):
         """
@@ -512,7 +512,7 @@ class Disk:
     
         return self.ims
 
-    def beam_corr(self):
+    def beam_corr(self, obs):
         """
         Alias for debris_disk.image.Image.beam_corr()
         Applies primary beam correction
@@ -521,5 +521,5 @@ class Disk:
         -------
         None
         """
-
-        self.im.beam_corr(self.obs)
+        for im, n in zip(ims, obs.nu):
+            self.im.beam_corr(self.obs, n, 12)

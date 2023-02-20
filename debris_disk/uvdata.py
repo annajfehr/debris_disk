@@ -3,70 +3,19 @@ import numpy as np
 from astropy.io import fits
 import galario.double as gd
 
-class UVData:
-    def __init__(self, directory, filetype='txt', mode=None):
-        '''
-        Initialize UVData object from the set of files in directory
-        '''
-        files = os.listdir(directory)
-        self.n = len(files)
-
-        self.directory = directory
-        self.mode = mode
-        self.datasets = [UVDataset(directory+f, self.mode, filetype) for f in files]
-
-    def sample(self, disk=None, val=None, dxy=None, PA=0, dRA=0., dDec=0., resid_dir='resids/', mod_dir='mods/'):
-        assert (self.mode != 'mcmc')
-
-        val, dxy = self.prepare_image(disk) 
-    
-        PA *= np.pi/180
-        for i, dataset in enumerate(self.datasets):
-            dataset.sample(val, 
-                           dxy, 
-                           resid_dir+'resid'+str(i)+'.fits',
-                           mod_dir+'mod'+str(i)+'.fits',
-                           PA=PA,
-                           dRA=dRA,
-                           dDec=dDec)
-
-
-    def chi2(self, disk=None, val=None, dxy=None, PA=0., dRA=0., dDec=0.):
-        val, dxy = prepare_image(self, disk) 
-
-
-        chi2 = sum([dataset.chi2(val, dxy, PA=PA, dRA=dRA, dDec=dDec, imchecked=True) for dataset in self.datasets])
-        return chi2
-
-
-    def _mrs(self):
-        return max([dataset._mrs() for dataset in self.datasets])
-
 class UVDataset:
-    def __init__(self, f, mode, filetype='txt'):
+    def __init__(self, f=None, mode='mcmc', stored=None, filetype='txt'):
+        if stored:
+            for key in stored:
+                setattr(self, key, stored[key])
+            return
+
         self.file = f
-
-        if filetype == 'fits':
-            data_vis = fits.open(f)
-
-            self.header = data_vis[0].header
-            self.freq0 = self.header['CRVAL4']
-
-            data = data_vis[0].data['data']
-
-            self.re = (data[:,0,0,0,:,:,0]).astype(np.float64) 
-            self.im = (data[:,0,0,0,:,:,1]).astype(np.float64)
-            
-            self.w = (data[:,0,0,0,:,:,2]).astype(np.float64)
-            
-            self.u = (data_vis[0].data['UU']*self.freq0).astype(np.float64).copy(order='C')
-            self.v = (data_vis[0].data['VV']*self.freq0).astype(np.float64).copy(order='C')
 
         if filetype == 'txt':
             data = np.loadtxt(f)
-
-
-            self.chans = np.sort(np.unique(data[:, 5]))
+            chans, index = np.unique(data[:, 5],return_index=True)
+            self.chans = chans[index.argsort()]
             
             self.u = []
             self.v = []
@@ -88,50 +37,58 @@ class UVDataset:
 
                 self.w.append(dat[:, 4])
 
-            self.chans *= 10
+            self.chans *= 100
 
+        self._mrs()
         if mode =='mcmc':
             return
 
         self.data = data
-        self.data_vis = data_vis
 
     def _mrs(self):
-        if type(self.u[0]) == float:
-            uvdist = np.hypot(self.u, self.v)
-        else:
-            uvdist = [np.min(np.hypot(u, v)) for u, v in zip(self.u, self.v)]
-        return 0.6 / np.min(uvdist)
+        self.mrs = np.empty(len(self.u))
+        for i, (u, v) in enumerate(zip(self.u, self.v)):
+            self.mrs[i] = find_mrs(u, v)
 
-    def sample(self, val, dxy, residout='resid.fits', modout='mod.fits', PA=0.,
+    def sample(self, val=None, dxy=None, disk=None, residout='resid.txt', modout='mod.txt', PA=0.,
             dRA=0., dDec=0.):
-        model_vis = np.zeros(self.data.shape)
-
-        vis = gd.sampleImage(val, dxy, self.u, self.v, PA=(np.pi/2)+PA)
-        for i in range(np.shape(model_vis)[4]):
-            model_vis[:, 0, 0, 0, i, 0, 0] = vis.real
-            model_vis[:, 0, 0, 0, i, 1, 0] = vis.real
-            model_vis[:, 0, 0, 0, i, 0, 1] = vis.imag
-            model_vis[:, 0, 0, 0, i, 1, 1] = vis.imag
-
-        outfile = self.data_vis.copy()
-        outfile[0].data['data'] = self.data- model_vis
-        outfile.writeto(residout, overwrite=True)
         
-        model_vis[:, 0, 0, 0, :, 0, 2] =self.data[:,0,0,0,:,0,2]  # weights (XX)
-        model_vis[:, 0, 0, 0, :, 1, 2] =self.data[:,0,0,0,:,1,2]  # weights (YY)
-        
-        outfile[0].data['data'] = model_vis
-        outfile.writeto(modout, overwrite=True)
-    
+        model_vis = np.empty((np.sum(len(u) for u in self.u), 6))
+        PA *= np.pi/180
+
+        assert len(disk.ims) == len(self.re)
+
+        start_loc = 0
+
+        for i, im in enumerate(disk.ims):
+            val, dxy = prepare_image(im, self.mrs[i], self.chans[i])
+
+            vis = gd.sampleImage(val,
+                    dxy,
+                    self.u[i].copy(order='C'), 
+                    self.v[i].copy(order='C'), 
+                    PA=(np.pi/2+PA),
+                    dRA=dRA,
+                    dDec=dDec)
+            end_loc = start_loc + len(vis.real)
+
+            mod = [self.u[i], self.v[i], vis.real, vis.imag, self.w[i], [self.chans[i]]*len(vis.real)]
+            model_vis[start_loc:end_loc] = np.array(mod).T
+
+            start_loc = end_loc
+
+        model_vis[:, 5] /= 100
+
+        np.savetxt(modout, model_vis)
+
     def chi2(self, val=None, dxy=None, disk=None, PA=0., dRA=0., dDec=0., imchecked=False):
         chi2 = 0
         PA *= np.pi /180
-        
+
         assert len(disk.ims) == len(self.re)
         
         for i, im in enumerate(disk.ims):
-            val, dxy = prepare_image(im, self.u[i], self.v[i])
+            val, dxy = prepare_image(im, self.mrs[i], self.chans[i])
 
             chi2 += gd.chi2Image(val, 
                                  dxy, 
@@ -140,46 +97,83 @@ class UVDataset:
                                  self.re[i].copy(order='C'), 
                                  self.im[i].copy(order='C'), 
                                  self.w[i].copy(order='C'), 
-                                 PA=(np.pi/2+PA), 
-                                 check=True)
+                                 PA=(np.pi/2+PA),
+                                 dRA=dRA,
+                                 dDec=dDec)
         return chi2
 
-        """
-        if not imchecked:
-            val, dxy = prepare_image(self, disk)
+    def pack(self):
+        return ([self.u, self.v, self.re, self.im, self.w, self.chan])
 
-        if len(np.shape(self.re)) == 1:
-            for i in range(len(self.re)):
-                re = self.re[i].copy(order='C')
-                im = self.im[i].copy(order='C')
-                w = self.w[i].copy(order='C')
-                u = self.u[i].copy(order='C')
-                v = self.v[i].copy(order='C')
-                chi2 += gd.chi2Image(val, dxy, u, v, re, im, w, PA=(np.pi/2+PA), check=True) 
+    def make_ms(msfile, model_table, mod_msfile=None, resid_msfile=None, datacolumn='DATA', verbose=True):
+        """
+        function to subtract model from visibilities and save it as a new ms file
+        Parameters
+        ==========
+        msfile: string, path to ms original file
+        new_msfile: string, name of new ms file
+        uvtable_filename: string, path to visibility table with model
+        datacolumn: string, column to extract (e.g. data or corrected)
+        """
+
+
+        # load model visibilities
+        um, vm, Vrealm, Vimagm, wm, lamsm = np.require(np.loadtxt(model_table, unpack=True), requirements='C')
+        Vmodel=Vrealm+Vimagm*1j
+
+        # open observations
+        tb.open(msfile, nomodify=True)
+
+        # get visibilities
+        tb_columns = tb.colnames()
+        #print(tb_columns)
+        if datacolumn.upper() in tb_columns:
+            data = tb.getcol(datacolumn.upper())
         else:
-            for i in range(np.shape(self.re)[1]):
-                re = self.re[:,i,0].copy(order='C')
-                im = self.im[:,i,0].copy(order='C')
-                w = self.w[:,i,0].copy(order='C')
-                chi2 += gd.chi2Image(val, dxy, self.u, self.v, re, im, w,
-                                     PA=(np.pi/2)+PA,check=True)
-                
-                re = self.re[:,i,1].copy(order='C')
-                im = self.im[:,i,1].copy(order='C')
-                w = self.w[:,i,1].copy(order='C')
-                chi2 += gd.chi2Image(val, dxy, self.u, self.v, re, im, w,
-                                     PA=(np.pi/2)+PA)
-        return chi2
-        """
+            raise KeyError("datacolumn {} is not available.".format(datacolumn))
 
-def prepare_image(im, u, v):
+        # reshape model visibilities
+        shape=np.shape(data)
+        nrows, ncol=shape[1], shape[2]
+        
+        Vmodel_reshaped=np.reshape(Vmodel, (nrows, ncol))
+        
+        tb.close()
+        
+        # copy observations before modifying
+        if resid_msfile:
+            os.system('rm -r {}'.format(resid_msfile))
+            os.system('cp -r {} {}'.format(msfile, resid_msfile))
+
+            resid_tb.open(resid_msfile, nomodify=False)
+
+            vis_sub=data - Vmodel_reshaped
+            # save visibilities
+            resid_tb.putcol(datacolumn, vis_sub) # save modified data
+
+            resid_tb.close()
+        
+        if mod_msfile:
+            os.system('rm -r {}'.format(mod_msfile))
+            os.system('cp -r {} {}'.format(msfile, mod_msfile))
+
+            mod_tb.open(mod_msfile, nomodify=False)
+
+            vis_sub=Vmodel_reshaped
+            # save visibilities
+            mod_tb.putcol(datacolumn, vis_sub) # save modified data
+
+            mod_tb.close()
+
+def prepare_image(im, mrs, nu):
     dxy = im.imres * np.pi /(180*3600) 
-    
+
     im.square()
+    im.beam_corr(nu, 12)
     val = im.val[::-1,:].copy(order='C')
 
-    min_pixels = int(2 * mrs(u, v) / dxy)+1
-    
+    min_pixels = int(2 * mrs / dxy)+1
+
     if min_pixels % 2 != 0:
         min_pixels+=1
     if min_pixels > np.shape(val)[0]:
@@ -187,7 +181,7 @@ def prepare_image(im, u, v):
 
     return val, dxy
 
-def mrs(u, v):
+def find_mrs(u, v):
     if type(u[0]) == float:
         uvdist = np.hypot(u, v)
     else:
@@ -202,3 +196,4 @@ def fill_in(val, min_pixels):
     new = np.zeros((min_pixels, min_pixels))
     new[start:end, start:end] = val
     return new
+
