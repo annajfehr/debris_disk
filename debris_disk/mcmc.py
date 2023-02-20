@@ -41,9 +41,11 @@ class MCMC:
                  p0,
                  pranges,
                  pscale=None):
-        
         self.uvdata=uvdata
+        self.vis = DD.UVDataset(uvdata, mode='mcmc')
+        freqs = DD.constants.c / self.vis.chans
         self.obs_params=obs_params
+        self.obs_params['nu'] = freqs
         self.parse_fixed_params(fixed_args)
         self.param_dict_to_list(p0, pscale, pranges)
 
@@ -106,9 +108,9 @@ class MCMC:
             rad_p0 = p0.pop('radial_params')
             rad_ranges = ranges.pop('radial_params')
             rad_scale = scale.pop('radial_params')
-            
-            assert rad_p0.keys == rad_ranges.keys
-            assert rad_p0.keys == rad_scale.keys
+
+            assert rad_p0.keys() == rad_ranges.keys()
+            assert rad_p0.keys() == rad_scale.keys()
             
             self.params += list(rad_p0.keys())
             self.p0 += list(rad_p0.values())
@@ -116,15 +118,15 @@ class MCMC:
             self.ranges += list(rad_ranges.values())
             self.num_rad = len(rad_p0)
         except:
-            self.num_rad = 0.
+            self.num_rad = 0
         
         try:
             vert_p0 = p0.pop('vert_params')
             vert_ranges = ranges.pop('vert_params')
             vert_scale = scale.pop('vert_params')
             
-            assert vert_p0.keys == vert_ranges.keys
-            assert vert_p0.keys == vert_scale.keys
+            assert vert_p0.keys() == vert_ranges.keys()
+            assert vert_p0.keys() == vert_scale.keys()
 
             self.params += list(vert_p0.keys())
             self.p0 += list(vert_p0.values())
@@ -132,7 +134,7 @@ class MCMC:
             self.ranges += list(vert_ranges.values())
             self.num_vert = len(vert_p0)
         except:
-            self.num_vert = 0.
+            self.num_vert = 0
 
         self.params += list(p0.keys())
         self.p0 += list(p0.values())
@@ -150,12 +152,10 @@ class MCMC:
         print("\nEmcee setup:")
         print("   Steps = " + str(nsteps))
         print("   Walkers = " + str(nwalkers))
-        print("   Threads = " + str(nthreads))
 
 
         nwalkers = int(nwalkers)
         nsteps = int(nsteps)
-        nthreads = int(nthreads)
 
 
         start = time.time()
@@ -187,7 +187,8 @@ class MCMC:
                                         self.fixed_vert_params,
                                         self.obs_params,
                                         self.fixed_args,
-                                        self.uvdata], 
+                                        self.uvdata,
+                                        self.vis.__dict__], 
                                   pool=pool)
 
         run = sampler.sample(init_pos, iterations=nsteps, store=True)
@@ -248,7 +249,8 @@ def lnpost(p,
            fixed_vert_params,
            obs_params,
            fixed_args,
-           uvdata):
+           uvdata,
+           uvdict):
     sys.stdout.flush()
     if not check_boundary(ranges, p): 
         return -np.inf
@@ -261,7 +263,9 @@ def lnpost(p,
                                                      fixed_vert_params)
     
     mod = Disk(obs=obs_params, **fixed_args, **disk_params)
-    mod.beam_corr()
-    vis = DD.UVData(uvdata, mode='mcmc')
-    chi2 = vis.chi2(mod, **viewing_params)
+    vis = DD.UVDataset(stored=uvdict)
+    #vis = DD.UVDataset(uvdata, mode='mcmc')
+
+    chi2 = vis.chi2(disk=mod, **viewing_params)
+    print(chi2)
     return -0.5 * chi2
