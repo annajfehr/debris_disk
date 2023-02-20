@@ -1,0 +1,98 @@
+2023-02-09 16:00:11	INFO	::casa	
+2023-02-09 16:00:11	INFO	::casa	
+2023-02-09 16:00:11	INFO	::casa	
+2023-02-09 16:00:11	INFO	::casa	
+2023-02-09 16:00:14	INFO	::casa	CASA Version PIPELINE 6.4.1.12
+2023-02-09 16:00:14	INFO	::casa	
+2023-02-09 16:00:14	INFO	::casa	Telemetry log file: /arc/home/afehr/.casa/casastats-6.4.1.12-165a669e67b-20230209-160013.log
+2023-02-09 16:00:14	INFO	::casa	Checking telemetry submission interval
+2023-02-09 16:00:14	INFO	::casa	Creating a new telemetry time stamp file./arc/home/afehr/.casa/telemetry-165a669e67b.stamp
+2023-02-09 16:00:14	INFO	::casa	Telemetry submit interval not reached. Not submitting data.
+2023-02-09 16:00:14	INFO	::casa	Next telemetry data submission in: 6 days, 23:59:59.998412
+2023-02-09 16:00:15	INFO	::casa	
+2023-02-09 16:00:15	INFO	::casa	optional configuration file config.py not found, continuing CASA startup without it
+2023-02-09 16:00:15	INFO	::casa	
+2023-02-09 16:00:15	INFO	::casa	Checking Measures tables in data repository sub-directory /opt/casa-6.4.1-12-pipeline-2022.2.0.64/lib/py/lib/python3.6/site-packages/casadata/__data__/geodetic
+2023-02-09 16:00:16	INFO	::casa	  IERSeop2000 (version date, last date in table (UTC)): 2022/07/28/15:00, 2022/06/28/00:00:00
+2023-02-09 16:00:16	INFO	::casa	  IERSeop97 (version date, last date in table (UTC)): 2022/07/28/15:00, 2022/06/28/00:00:00
+2023-02-09 16:00:16	INFO	::casa	  IERSpredict (version date, last date in table (UTC)): 2022/08/24/15:00, 2022/11/22/00:00:00
+2023-02-09 16:00:16	INFO	::casa	  TAI_UTC (version date, last date in table (UTC)): 2022/08/23/15:00, 2017/01/01/00:00:00
+2023-02-09 16:02:48	INFO	tclean::::casa	##########################################
+2023-02-09 16:02:48	INFO	tclean::::casa	##### Begin Task: tclean             #####
+2023-02-09 16:02:48	INFO	tclean::::casa	tclean( vis='mod.ms/', selectdata=True, field='', spw='', timerange='', uvrange='', antenna='', scan='', observation='', intent='', datacolumn='corrected', imagename='mod', imsize=[1024, 1024], cell=0.04, phasecenter='', stokes='I', projection='SIN', startmodel='', specmode='mfs', reffreq='', nchan=-1, start='', width='', outframe='LSRK', veltype='radio', restfreq=[], interpolation='linear', perchanweightdensity=True, gridder='standard', facets=1, psfphasecenter='', wprojplanes=1, vptable='', mosweight=True, aterm=True, psterm=False, wbawp=True, conjbeams=False, cfcache='', usepointing=False, computepastep=360.0, rotatepastep=360.0, pointingoffsetsigdev=[], pblimit=0.2, normtype='flatnoise', deconvolver='hogbom', scales=[], nterms=2, smallscalebias=0.0, restoration=True, restoringbeam=[], pbcor=True, outlierfile='', weighting='briggs', robust=0.5, noise='1.0Jy', npixels=0, uvtaper=[''], niter=10000, gain=0.1, threshold=0.0, nsigma=0.0, cycleniter=-1, cyclefactor=1.0, minpsffraction=0.05, maxpsffraction=0.8, interactive=False, usemask='user', mask='', pbmask=0.0, sidelobethreshold=3.0, noisethreshold=5.0, lownoisethreshold=1.5, negativethreshold=0.0, smoothfactor=1.0, minbeamfrac=0.3, cutthreshold=0.01, growiterations=75, dogrowprune=True, minpercentchange=-1.0, verbose=False, fastnoise=True, restart=True, savemodel='none', calcres=True, calcpsf=True, psfcutoff=0.35, parallel=False )
+2023-02-09 16:02:48	INFO	tclean::::casa	Verifying Input Parameters
+2023-02-09 16:02:49	INFO	SynthesisImagerVi2::selectData 	MS : mod.ms/ | [Opened in readonly mode]
+2023-02-09 16:02:49	INFO	SynthesisImagerVi2::selectData 	  NRows selected : 340704
+2023-02-09 16:02:49	INFO	SynthesisImagerVi2::defineImage 	Define image coordinates for [mod] : 
+2023-02-09 16:02:49	INFO	SynthesisImagerVi2::defineImage 	Impars : start 
+2023-02-09 16:02:49	INFO	SynthesisImagerVi2::defineImage 	Shape : [1024, 1024, 1, 1]Spectral : [3.38225e+11] at [0] with increment [1.57092e+10]
+2023-02-09 16:02:49	INFO	SynthesisImagerVi2::defineImage 	Set Gridding options for [mod] with ftmachine : gridft
+2023-02-09 16:02:49	INFO	SynthesisImagerVi2::nSubCubeFitInMemory	Required memory: 0.05239 GB. Available mem.: 105.9 GB (rc, mem. fraction: 80%, memory: -) => Subcubes: 1. Processes on node: 1.
+2023-02-09 16:02:49	INFO	SynthesisImagerVi2::weight() 	Set imaging weights : Briggs weighting: sidelobes will be suppressed over full image
+2023-02-09 16:02:50	INFO	VisSetUtil::VisImagingWeight() 	Normal robustness, robust = 0.5
+2023-02-09 16:02:50	INFO	task_tclean::SynthesisDeconvolver::setupDeconvolution 	Set Deconvolution Options for [mod] : hogbom
+2023-02-09 16:02:50	INFO	task_tclean::SynthesisImager::makePSF 	----------------------------------------------------------- Make PSF ---------------------------------------------
+2023-02-09 16:03:13	INFO	task_tclean::SIImageStore::calcSensitivity 	[mod] Theoretical sensitivity (Jy/bm):1.431e-05 
+2023-02-09 16:03:13	INFO	task_tclean::SIImageStore::printBeamSet 	Beam : 0.572475 arcsec, 0.510581 arcsec, -28.9484 deg
+2023-02-09 16:03:13	INFO	task_tclean::SynthesisImagerVi2::makePrimaryBeam 	vi2 : Evaluating Primary Beam model onto image grid(s)
+2023-02-09 16:03:15	INFO	task_tclean::SynthesisImager::executeMajorCycle 	----------------------------------------------------------- Run (Last) Major Cycle 1 -------------------------------------
+2023-02-09 16:03:59	INFO	task_tclean::SynthesisDeconvolver::initMinorCycle 	 Absolute Peak residual within mask : 0.000395845, over full image : 0.000395845
+2023-02-09 16:03:59	INFO	SynthesisDeconvolver::setupMask 	[mod] Initializing to existing mask
+2023-02-09 16:03:59	INFO	SynthesisDeconvolver::setupMask 	[mod] Number of pixels in the clean mask : 1.04858e+06 out of a total of 1.04858e+06 pixels. [ 100 % ]
+2023-02-09 16:03:59	INFO	SynthesisDeconvolver::initMinorCycle 	 Absolute Peak residual within mask : 0.000395845, over full image : 0.000395845
+2023-02-09 16:03:59	INFO	task_tclean::SDAlgorithmBase::deconvolve 	[mod] Run Hogbom minor-cycle | CycleThreshold=2.06377e-05, CycleNiter=10000, Gain=0.1
+2023-02-09 16:04:07	INFO	task_tclean::SDAlgorithmBase::deconvolve 	[mod] iters=0->4945 [4945], model=0.0193832->0.00744587, peakres=0.000395845->2.06367e-05, Reached cyclethreshold.
+2023-02-09 16:04:07	INFO	task_tclean::grpcInteractiveCleanManager::mergeCycleExecutionRecord 	Completed 4945 iterations.
+2023-02-09 16:04:07	INFO	task_tclean::SynthesisImager::executeMajorCycle 	----------------------------------------------------------- Run Major Cycle 2 -------------------------------------
+2023-02-09 16:04:48	INFO	task_tclean::SynthesisDeconvolver::initMinorCycle 	 Absolute Peak residual within mask : 2.19417e-05, over full image : 2.19417e-05
+2023-02-09 16:04:48	INFO	SDAlgorithmBase::deconvolve 	[mod] Run Hogbom minor-cycle | CycleThreshold=1.14395e-06, CycleNiter=5055, Gain=0.1
+2023-02-09 16:04:57	INFO	SDAlgorithmBase::deconvolve 	[mod] iters=0->6000 [6000], model=0.00744587->0.00696073, peakres=2.19417e-05->1.23618e-05, Reached cycleniter.
+2023-02-09 16:04:57	INFO	grpcInteractiveCleanManager::mergeCycleExecutionRecord 	Completed 10945 iterations.
+2023-02-09 16:04:57	INFO	task_tclean::SynthesisImager::executeMajorCycle 	----------------------------------------------------------- Run (Last) Major Cycle 3 -------------------------------------
+2023-02-09 16:05:38	INFO	task_tclean::SynthesisDeconvolver::initMinorCycle 	 Absolute Peak residual within mask : 1.30923e-05, over full image : 1.30923e-05
+2023-02-09 16:05:38	INFO	tclean::::casa	Reached global stopping criterion : iteration limit
+2023-02-09 16:05:38	INFO	SDAlgorithmBase::restore 	[mod] : Restoring model image.
+2023-02-09 16:05:38	INFO	SIImageStore::restore 	Beam for chan : 0 : 0.572475 arcsec, 0.510581 arcsec, -28.9484 deg
+2023-02-09 16:05:39	INFO	task_tclean::SDAlgorithmBase::pbcor 	[mod] : Applying PB correction
+2023-02-09 16:05:40	INFO	tclean::::casa	Searching for images with prefix 'mod'... Found these, writing history into them: ['mod.image.pbcor', 'mod.image', 'mod.residual', 'mod.pb', 'mod.sumwt', 'mod.psf', 'mod.model', 'mod.mask']
+2023-02-09 16:05:41	INFO	tclean::::casa	Task tclean complete. Start time: 2023-02-09 16:02:48.462758 End time: 2023-02-09 16:05:41.302780
+2023-02-09 16:05:41	INFO	tclean::::casa	##### End Task: tclean               #####
+2023-02-09 16:05:41	INFO	tclean::::casa	##########################################
+2023-02-09 16:18:03	INFO	tclean::::casa	##########################################
+2023-02-09 16:18:03	INFO	tclean::::casa	##### Begin Task: tclean             #####
+2023-02-09 16:18:03	INFO	tclean::::casa	tclean( vis='mod.ms/', selectdata=True, field='', spw='', timerange='', uvrange='', antenna='', scan='', observation='', intent='', datacolumn='corrected', imagename='mod', imsize=[1024, 1024], cell=0.04, phasecenter='', stokes='I', projection='SIN', startmodel='', specmode='mfs', reffreq='', nchan=-1, start='', width='', outframe='LSRK', veltype='radio', restfreq=[], interpolation='linear', perchanweightdensity=True, gridder='standard', facets=1, psfphasecenter='', wprojplanes=1, vptable='', mosweight=True, aterm=True, psterm=False, wbawp=True, conjbeams=False, cfcache='', usepointing=False, computepastep=360.0, rotatepastep=360.0, pointingoffsetsigdev=[], pblimit=0.2, normtype='flatnoise', deconvolver='hogbom', scales=[], nterms=2, smallscalebias=0.0, restoration=True, restoringbeam=[], pbcor=True, outlierfile='', weighting='briggs', robust=0.5, noise='1.0Jy', npixels=0, uvtaper=[''], niter=10000, gain=0.1, threshold=0.0, nsigma=0.0, cycleniter=-1, cyclefactor=1.0, minpsffraction=0.05, maxpsffraction=0.8, interactive=False, usemask='user', mask='', pbmask=0.0, sidelobethreshold=3.0, noisethreshold=5.0, lownoisethreshold=1.5, negativethreshold=0.0, smoothfactor=1.0, minbeamfrac=0.3, cutthreshold=0.01, growiterations=75, dogrowprune=True, minpercentchange=-1.0, verbose=False, fastnoise=True, restart=True, savemodel='none', calcres=True, calcpsf=True, psfcutoff=0.35, parallel=False )
+2023-02-09 16:18:03	INFO	tclean::::casa	Verifying Input Parameters
+2023-02-09 16:18:03	INFO	SynthesisImagerVi2::selectData 	MS : mod.ms/ | [Opened in readonly mode]
+2023-02-09 16:18:03	INFO	SynthesisImagerVi2::selectData 	  NRows selected : 340704
+2023-02-09 16:18:03	INFO	SynthesisImagerVi2::defineImage 	Define image coordinates for [mod] : 
+2023-02-09 16:18:03	INFO	SynthesisImagerVi2::defineImage 	Impars : start 
+2023-02-09 16:18:03	INFO	SynthesisImagerVi2::defineImage 	Shape : [1024, 1024, 1, 1]Spectral : [3.38225e+11] at [0] with increment [1.57092e+10]
+2023-02-09 16:18:03	INFO	SynthesisImagerVi2::defineImage 	Set Gridding options for [mod] with ftmachine : gridft
+2023-02-09 16:18:03	INFO	SynthesisImagerVi2::nSubCubeFitInMemory	Required memory: 0.05239 GB. Available mem.: 105.9 GB (rc, mem. fraction: 80%, memory: -) => Subcubes: 1. Processes on node: 1.
+2023-02-09 16:18:03	INFO	SynthesisImagerVi2::weight() 	Set imaging weights : Briggs weighting: sidelobes will be suppressed over full image
+2023-02-09 16:18:05	INFO	VisSetUtil::VisImagingWeight() 	Normal robustness, robust = 0.5
+2023-02-09 16:18:05	INFO	task_tclean::SynthesisDeconvolver::setupDeconvolution 	Set Deconvolution Options for [mod] : hogbom
+2023-02-09 16:18:05	INFO	task_tclean::SynthesisImager::makePSF 	----------------------------------------------------------- Make PSF ---------------------------------------------
+2023-02-09 16:18:34	INFO	task_tclean::::	Process 15: waiting for write-lock on file /arc/projects/ARKS/vertical_structure/parametric_modeling/examples/mod.image/table.lock
+2023-02-09 16:22:40	INFO	tclean::::casa	Task tclean complete. Start time: 2023-02-09 16:18:02.788723 End time: 2023-02-09 16:22:39.570073
+2023-02-09 16:22:40	INFO	tclean::::casa	##### End Task: tclean               #####
+2023-02-09 16:22:40	INFO	tclean::::casa	##########################################
+2023-02-09 16:22:42	INFO	tclean::::casa	##########################################
+2023-02-09 16:22:42	INFO	tclean::::casa	##### Begin Task: tclean             #####
+2023-02-09 16:22:42	INFO	tclean::::casa	tclean( vis='mod.ms/', selectdata=True, field='', spw='', timerange='', uvrange='', antenna='', scan='', observation='', intent='', datacolumn='corrected', imagename='mod', imsize=[1024, 1024], cell=0.04, phasecenter='', stokes='I', projection='SIN', startmodel='', specmode='mfs', reffreq='', nchan=-1, start='', width='', outframe='LSRK', veltype='radio', restfreq=[], interpolation='linear', perchanweightdensity=True, gridder='standard', facets=1, psfphasecenter='', wprojplanes=1, vptable='', mosweight=True, aterm=True, psterm=False, wbawp=True, conjbeams=False, cfcache='', usepointing=False, computepastep=360.0, rotatepastep=360.0, pointingoffsetsigdev=[], pblimit=0.2, normtype='flatnoise', deconvolver='hogbom', scales=[], nterms=2, smallscalebias=0.0, restoration=True, restoringbeam=[], pbcor=True, outlierfile='', weighting='briggs', robust=0.5, noise='1.0Jy', npixels=0, uvtaper=[''], niter=10000, gain=0.1, threshold=0.0, nsigma=0.0, cycleniter=-1, cyclefactor=1.0, minpsffraction=0.05, maxpsffraction=0.8, interactive=False, usemask='user', mask='', pbmask=0.0, sidelobethreshold=3.0, noisethreshold=5.0, lownoisethreshold=1.5, negativethreshold=0.0, smoothfactor=1.0, minbeamfrac=0.3, cutthreshold=0.01, growiterations=75, dogrowprune=True, minpercentchange=-1.0, verbose=False, fastnoise=True, restart=True, savemodel='none', calcres=True, calcpsf=True, psfcutoff=0.35, parallel=False )
+2023-02-09 16:22:42	INFO	tclean::::casa	Verifying Input Parameters
+2023-02-09 16:22:42	INFO	SynthesisImagerVi2::selectData 	MS : mod.ms/ | [Opened in readonly mode]
+2023-02-09 16:22:42	INFO	SynthesisImagerVi2::selectData 	  NRows selected : 340704
+2023-02-09 16:22:42	INFO	SynthesisImagerVi2::defineImage 	Define image coordinates for [mod] : 
+2023-02-09 16:22:42	INFO	SynthesisImagerVi2::defineImage 	Impars : start 
+2023-02-09 16:22:42	INFO	SynthesisImagerVi2::defineImage 	Shape : [1024, 1024, 1, 1]Spectral : [3.38225e+11] at [0] with increment [1.57092e+10]
+2023-02-09 16:22:42	INFO	SynthesisImagerVi2::defineImage 	Set Gridding options for [mod] with ftmachine : gridft
+2023-02-09 16:22:42	INFO	SynthesisImagerVi2::nSubCubeFitInMemory	Required memory: 0.05239 GB. Available mem.: 105.9 GB (rc, mem. fraction: 80%, memory: -) => Subcubes: 1. Processes on node: 1.
+2023-02-09 16:22:42	INFO	SynthesisImagerVi2::weight() 	Set imaging weights : Briggs weighting: sidelobes will be suppressed over full image
+2023-02-09 16:22:44	INFO	VisSetUtil::VisImagingWeight() 	Normal robustness, robust = 0.5
+2023-02-09 16:22:44	INFO	task_tclean::SynthesisDeconvolver::setupDeconvolution 	Set Deconvolution Options for [mod] : hogbom
+2023-02-09 16:22:44	INFO	task_tclean::SynthesisImager::makePSF 	----------------------------------------------------------- Make PSF ---------------------------------------------
+2023-02-09 16:23:13	INFO	task_tclean::::	Process 15: waiting for write-lock on file /arc/projects/ARKS/vertical_structure/parametric_modeling/examples/mod.image/table.lock
+2023-02-09 16:25:28	INFO	tclean::::casa	Task tclean complete. Start time: 2023-02-09 16:22:41.984878 End time: 2023-02-09 16:25:27.643386
+2023-02-09 16:25:28	INFO	tclean::::casa	##### End Task: tclean               #####
+2023-02-09 16:25:28	INFO	tclean::::casa	##########################################
