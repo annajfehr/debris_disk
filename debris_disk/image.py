@@ -33,11 +33,14 @@ class Image:
         Multiplies self.val by observation primary beam
     """
 
-    def __init__(self, val, imres=None, axes=None):
-        self.val = val * 1e23
+    def __init__(self, val, imres=None, axes=None, modres=None):
+        self.val = val * 1e23 
+        
         self.nx = np.shape(val)[1]
         self.ny = np.shape(val)[0]
 
+        if modres:
+            self.val *= modres
         if imres:
             self.imres = imres
 
