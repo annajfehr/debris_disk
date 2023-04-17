@@ -1,6 +1,7 @@
 import time
 import sys
 import os
+import math
 import numpy as np
 from debris_disk import profiles
 from debris_disk import Disk
@@ -43,9 +44,10 @@ class MCMC:
                  pscale=None):
         self.uvdata=uvdata
         self.vis = DD.UVDataset(uvdata, mode='mcmc')
-        freqs = DD.constants.c / self.vis.chans
+        
         self.obs_params=obs_params
-        self.obs_params['nu'] = freqs
+        
+        self.obs_params['nu'] = DD.constants.c / self.vis.chans
         self.parse_fixed_params(fixed_args)
         self.param_dict_to_list(p0, pscale, pranges)
 
@@ -161,9 +163,6 @@ class MCMC:
         start = time.time()
         prob, state = None, None
         
-        init_pos = np.random.normal(loc=self.p0,
-                                    size=(nwalkers,self.ndim),
-                                    scale=self.scale)
 
         steps=[]
 
@@ -190,6 +189,14 @@ class MCMC:
                                         self.uvdata,
                                         self.vis.__dict__], 
                                   pool=pool)
+
+        if restart:
+            steps = np.loadtxt(restart)
+            init_pos = np.array([steps[-(nwalkers-i+1)] for i in range(nwalkers)])[:,:-1]
+        else:
+            init_pos = np.random.normal(loc=self.p0,
+                                        size=(nwalkers,self.ndim),
+                                        scale=self.scale)
 
         run = sampler.sample(init_pos, iterations=nsteps, store=True)
 
@@ -224,7 +231,7 @@ def param_list_to_dict(pos,
     params_dict['radial_params'] = radial_dict
     params_dict['vert_params'] = vert_dict
 
-    viewing_params = {'PA' : params_dict.pop('PA')}
+    viewing_params = {'PA' : params_dict.pop('PA'), 'dRA' : params_dict.pop('dRA'), 'dDec' : params_dict.pop('dDec')}
 
     return params_dict, viewing_params
 
@@ -267,5 +274,8 @@ def lnpost(p,
     #vis = DD.UVDataset(uvdata, mode='mcmc')
 
     chi2 = vis.chi2(disk=mod, **viewing_params)
-    print(chi2)
+
+    if math.isnan(chi2):
+        return -np.inf
+    
     return -0.5 * chi2

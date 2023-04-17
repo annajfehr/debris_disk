@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.special import erf
 
 class powerlaw:
     def val(r, alpha, Rin, Rout, lin=0.01, lout=0.01):
@@ -6,10 +7,27 @@ class powerlaw:
                 (1+np.tanh((Rout-r)/lout))/4
     
     def limits(alpha, Rin, Rout, lin=0.01, lout=0.01):
-        fac = 3.451 # 99.9 percentile
+        fac = 3.451 *1.496e13 # 99.99 percentile
         rmin = max(0, Rin - lin*fac)
         rmax = Rout + lout*fac
         return [rmin, rmax]
+    
+    def conversion(params, unit):
+        params['Rin'] *= unit
+        params['Rout'] *= unit
+        return params
+
+class powerlaw_errf:
+    def val(r, alpha, Rin, Rout, sigma_in=1e-10, sigma_out=1e-10):
+        inner_edge = 1-erf((Rin-r)/(np.sqrt(2)*sigma_in*Rin))
+        outer_edge = 1-erf((r-Rout)/(np.sqrt(2)*sigma_out*Rout))
+        return inner_edge * outer_edge * (r/Rin)**(-alpha)
+
+    def limits(alpha, Rin, Rout, sigma_in=1e-10, sigma_out=1e-10):
+        #fac = 3.451 *1.496e13 # 99.99 percentile
+        #rmin = max(0, Rin - lin*fac)
+        #rmax = Rout + lout*fac
+        return [1, 400 * 1.496e13]
     
     def conversion(params, unit):
         params['Rin'] *= unit
@@ -64,7 +82,7 @@ class triple_powerlaw:
         assert alpha_in > 0, "alpha_in must be positive to find inner edge"
         assert alpha_out < 0, "alpha_out must be negative to find outer edge"
         rmin = Rin - (1000/((alpha_in + 8.61)**(5/4)))
-        rmax = Rout + (1000/((alpha_out +8.61)**(5/4)))
+        rmax = Rout + 5.28e15 + 2.94*(alpha_out**2) + 58.5*alpha_out
         return [min(rmin, 0), rmax]
     
     def conversion(params, unit):
@@ -87,17 +105,22 @@ class linear:
         return slope*(Rout**2-Rin**2)/2
 
 class gaussian:
-    def val(x, sigma, x0=0):
-        return np.exp(-((x-x0)**2/(2*sigma**2)))
+    def val(x, sigma, R=0):
+        return np.exp(-((x-R)**2/(2*sigma**2)))
     
-    def norm(sigma, x0=0):
+    def norm(sigma, R=0):
         return sigma * np.sqrt(2*np.pi)
     
-    def limits(sigma, x0=0):
+    def limits(sigma, R=0):
         fac = 2.628 # 99.9 percentile
-        rmin = max(0, x0 - sigma * fac)
-        rmax = x0 + sigma * fac
+        rmin = max(0, R - sigma * fac)
+        rmax = R + sigma * fac
         return [rmin, rmax]
+    
+    def conversion(params, unit):
+        params['R'] *= unit
+        params['sigma'] *= unit
+        return params
 
 class lorentzian:
     def val(x, gamma, b=0):

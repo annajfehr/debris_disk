@@ -95,7 +95,9 @@ class Disk:
                               'Rc' : 1.,
                               'psi' : 1.},
                  vert_func='gaussian',
-                 obs=None):
+                 obs=None,
+                 calc_structure=True,
+                 calc_image=True):
         """
         Constructs disk object, including density arrays and on sky image, if
         given sufficient parameters.
@@ -147,6 +149,11 @@ class Disk:
         else:
             self.modres = 0.5 * const.AU
 
+        if 'Rin' in radial_params:
+            if radial_params['Rin'] > radial_params['Rout']:
+                self.mod = False
+                return
+
         self.L_star = L_star
         self.sigma_crit = sigma_crit
         
@@ -165,20 +172,23 @@ class Disk:
 
         self.vert_params = self.vp_convert(vert_params.copy())
 
-        self.structure2d()
-        self.incline() # Produce 3d sky plane density
-        
-        if obs:
+        if calc_structure:
+            self.structure2d()
+            self.incline() # Produce 3d sky plane density
+        self.mod = True
+        if obs and calc_image:
             self._im(obs) # Integrate to find image intensities
 
     def rp_convert(self, params):
         if self.radial_func == 'powerlaw':
             return profiles.powerlaw.conversion(params, const.AU)
+        if self.radial_func == 'powerlaw_errf':
+            return profiles.powerlaw_errf.conversion(params, const.AU)
         if self.radial_func == 'double_powerlaw':
             return profiles.double_powerlaw.conversion(params, const.AU)
         if self.radial_func == 'triple_powerlaw':
             return profiles.triple_powerlaw.conversion(params, const.AU)
-    
+
     def vp_convert(self, vert_params):
         vert_params['Hc'] *= const.AU
         vert_params['Rc'] *= const.AU
@@ -197,18 +207,18 @@ class Disk:
 
         # Define radial sampling grid -- for 'powerlaw' profile use logspaced
         # grid, in all other cases use uniform sampling
-        r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
-        
+        self.r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
+ 
         # Calculates scale heightm as a function of r
-        H, Hnorm = self.H(r, **self.vert_params)
+        H, Hnorm = self.H(**self.vert_params)
 
         self._zmax(H) # Find vertical extent
         self.nz = int(10 * self.zmax / self.modres) # 10x final image resolution
-        z = np.linspace(0, self.zmax, self.nz)
+        self.z = np.linspace(0, self.zmax, self.nz)
         
-        rr, zz = np.meshgrid(r, z)
+        rr, zz = np.meshgrid(self.r, self.z)
         assert self._rho2d(rr, zz, H, Hnorm)  # create 2d disk density structure
-        assert self._T2d(rr) # Calculate 2d temperature array
+        assert self._T2d(rr, zz) # Calculate 2d temperature array
 
     def _rbounds(self):
         """Set self.rbounds, the inner and outer radii of the disk where the
@@ -225,6 +235,9 @@ class Disk:
         if self.radial_func == 'powerlaw':
             self.rbounds = profiles.powerlaw.limits(**self.radial_params)
 
+        if self.radial_func == 'powerlaw_errf':
+            self.rbounds = profiles.powerlaw_errf.limits(**self.radial_params)
+        
         if self.radial_func == 'double_powerlaw':
             self.rbounds = profiles.double_powerlaw.limits(**self.radial_params)
 
@@ -232,9 +245,11 @@ class Disk:
             self.rbounds = profiles.triple_powerlaw.limits(**self.radial_params)
         
         self.rbounds[1] = min(self.rbounds[1], 500 * const.AU)
+        if self.rbounds[0] < self.modres:
+            self.rbounds[0] = self.modres
         assert (self.rbounds[0]>=0) and (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form"
     
-    def H(self, r, Hc, Rc, psi):
+    def H(self, Hc, Rc, psi):
         """
         Determine scale height values
 
@@ -252,9 +267,8 @@ class Disk:
         Hnorm : float    
             integral of H
         """
-        H = Hc * (r / Rc)**psi
+        H = Hc * (self.r / Rc)**psi
         self.Harr = H
-        self.r = r
         Hnorm = (Hc / (psi+1)) * ((self.rbounds[1] / Rc)**(psi+1) - \
                 (self.rbounds[0] / Rc)**(psi+1))
         return H, Hnorm
@@ -323,6 +337,9 @@ class Disk:
 
         if self.radial_func == 'powerlaw':
             val = profiles.powerlaw.val(rr, **self.radial_params)
+        
+        if self.radial_func == 'powerlaw_errf':
+            val = profiles.powerlaw_errf.val(rr, **self.radial_params)
 
         if self.radial_func == 'double_powerlaw':
             val = profiles.double_powerlaw.val(rr, **self.radial_params)
@@ -334,8 +351,9 @@ class Disk:
             val = profiles.gaussian.val(rr, **self.radial_params)
 
         if self.gap:
-            gap = 1-(self.gap_params.pop('depth') * \
-                    profiles.gaussian.val(rr, **self.gap_params))
+            gap_params = profiles.gaussian.conversion(self.gap_params, const.AU)
+            gap = 1-(gap_params.pop('depth') * \
+                    profiles.gaussian.val(rr, **gap_params))
             val*=gap
             self.g = gap
 
@@ -368,7 +386,7 @@ class Disk:
         if self.vert_func =='lorentzian':
             return 2*np.pi*profiles.gaussian.val(zz, H2d)/(Hnorm)
     
-    def _T2d(self, rr):
+    def _T2d(self, rr, zz):
         """
         Populate self.T2d, an nr x nz array where self.T2d[i, j] is the
         temperature at (self.r[i], self.z[j])
@@ -382,8 +400,9 @@ class Disk:
         -------
         True upon success
         """
-
-        self.T2d = (self.L_star * const.Lsun / (16. * np.pi * rr**2 * const.sigmaB))**0.25
+        dist = np.sqrt((rr**2) + (zz**2))
+        self.dist = dist
+        self.T2d = (self.L_star * const.Lsun / (16. * np.pi * (dist**2) * const.sigmaB))**0.25
         return True
 
     def incline(self):
@@ -418,6 +437,10 @@ class Disk:
         X = np.linspace(-Xlim, Xlim, self.nX)
         Y = np.linspace(-Ylim, Ylim, self.nY)
         S = np.linspace(-Slim, Slim, nS)
+
+        self.Xlim= Xlim
+        self.Ylim = Ylim
+        self.Slim = Slim
 
         xx, yy, self.S = np.meshgrid(X, Y, S)
         
@@ -462,7 +485,7 @@ class Disk:
             Snu = BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
 
             arg = Knu_dust*Snu*np.exp(-tau)
-            self.ims.append(Image(trapezoid(arg, self.S, axis=2), obs.imres))
+            self.ims.append(Image(trapezoid(arg, self.S, axis=2), obs.imres, modres=self.modres))
 
 
     def square(self):
@@ -523,3 +546,49 @@ class Disk:
         """
         for im, n in zip(ims, obs.nu):
             self.im.beam_corr(self.obs, n, 12)
+
+    def show_rho2d(self, args={}):
+        self.show_2d(self.rho2d, **args)
+
+    def show_T2d(self, args=[]):
+        self.show_2d(self.T2d, **args)
+
+    def show_2d(self, arr, ax=None, fig=None, colorbar=False):
+        from matplotlib import pyplot as plt
+        if not ax:
+            fig, ax = plt.subplots()
+        cm = ax.imshow(arr, 
+                       origin='lower', 
+                       extent=[self.rbounds[0]/const.AU, self.rbounds[1]/const.AU, 0, self.zmax/const.AU])
+        ax.set_xlabel(r'$r$ [au]',fontsize=12)
+        ax.set_ylabel(r'$z$ [au]',fontsize=12)
+        if colorbar:
+            cbar = fig.colorbar(cm, ax=ax, shrink=1.1, aspect=10)
+            cbar.set_label(colorbar, fontsize=12)
+
+        ax.set_yscale('log')
+        ax.set_xscale('log')
+        print(self.zmax/const.AU)
+        ax.set_ylim(0.1, self.zmax/const.AU)
+        ax.set_xlim(self.rbounds[0]/const.AU, self.rbounds[1]/const.AU-1)
+        ax.set_aspect('auto')
+
+    def show_3d(self, arr, axes=None, fig=None, colorbar=False):
+        from matplotlib import pyplot as plt
+        if axes is None:
+            fig, axes = plt.subplots(3)
+        axes[0].imshow(np.mean(arr, axis=2),
+                       extent=[-self.Xlim/const.AU, self.Xlim/const.AU, -self.Ylim/const.AU, self.Ylim/const.AU])
+        axes[0].set_xlabel('X [au]', fontsize=12)
+        axes[0].set_ylabel('Y [au]', fontsize=12)
+
+        axes[1].imshow(np.mean(arr, axis=1),
+                       extent=[-self.Slim/const.AU, self.Slim/const.AU, -self.Ylim/const.AU, self.Ylim/const.AU])
+        axes[1].set_xlabel('S [au]', fontsize=12)
+        axes[1].set_ylabel('Y [au]', fontsize=12)
+
+        axes[2].imshow(np.rot90(np.mean(arr, axis=0)),
+             extent=[-self.Xlim/const.AU, self.Xlim/const.AU, -self.Slim/const.AU, self.Slim/const.AU])
+        axes[2].set_xlabel('X [au]', fontsize=12)
+        axes[2].set_ylabel('S [au]', fontsize=12)
+
