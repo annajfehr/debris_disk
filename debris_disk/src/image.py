@@ -98,3 +98,11 @@ class Image:
         norm = profiles.gaussian.norm(dst, sigma)**2
         self.beam = profiles.gaussian.val(dst, sigma) 
         self.val *= self.beam
+
+    def add_star(self, f_star):
+        if (self.nx % 2) and (self.ny % 2):
+            self.val[int(self.ny/2), int(self.nx/2)] += f_star / 1e6
+        else:
+            centery = int(self.ny/2)
+            centerx = int(self.nx/2)
+            self.val[centery-1:centery+1, centerx-1:centerx+1] += f_star / (1e6 * 4)

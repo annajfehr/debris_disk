@@ -18,6 +18,7 @@ class UVDataset:
             self.datasets.append(UVData(file, mode=mode, filetype=filetype))
 
         self._mrs()
+        self._resolution()
         self.chans = [element for ds in self.datasets for element in ds.chans]
         if mode =='mcmc':
             return
@@ -26,6 +27,9 @@ class UVDataset:
     def _mrs(self):
         self.mrs = [ds.mrs for ds in self.datasets]
 
+    def _resolution(self):
+        self.resolution = [ds.resolution for ds in self.datasets]
+    
     def sample(self, val=None, dxy=None, disk=None, modout='mod.txt', PA=0., dRA=0., dDec=0.):
         images = disk.ims
         for i, ds in enumerate(self.datasets):
@@ -49,7 +53,6 @@ class UVDataset:
 
     def pack(self):
         return [ds.pack for ds in self.datasets]
-        #return ([self.u, self.v, self.re, self.im, self.w, self.chan])
 
 class UVData:
     def __init__(self, f=None, mode='mcmc', stored=None, filetype='txt'):
@@ -89,6 +92,7 @@ class UVData:
             self.chans *= 100
 
         self._mrs()
+        self._resolution()
 
         self.nchans = len(self.chans)
         if mode =='mcmc':
@@ -101,6 +105,11 @@ class UVData:
         for i, (u, v) in enumerate(zip(self.u, self.v)):
             self.mrs[i] = find_mrs(u, v)
 
+    def _resolution(self):
+        self.resolution = np.empty(len(self.u))
+        for i, (u, v) in enumerate(zip(self.u, self.v)):
+            self.resolution[i] = find_resolution(u, v)
+    
     def sample(self, ims=None, val=None, dxy=None, disk=None, modout='mod.txt', PA=0.,
             dRA=0., dDec=0.):
         
@@ -119,7 +128,6 @@ class UVData:
         for i, im in enumerate(ims):
             val, dxy = prepare_image(im, self.mrs[i], self.chans[i])
 
-            print(np.max(val), dxy)
             vis = gd.sampleImage(val,
                     dxy,
                     self.u[i].copy(order='C'), 
@@ -134,7 +142,6 @@ class UVData:
             mod = [self.u[i], self.v[i], vis.real, vis.imag, self.w[i], [self.chans[i]/100]*len(vis.real)]
             model_vis[start_loc:end_loc] = np.array(mod).T
 
-            print(np.max(mod[0]))
             start_loc = end_loc
 
 
@@ -190,6 +197,13 @@ def find_mrs(u, v):
     else:
         uvdist = [np.min(np.hypot(up, vp)) for up, vp in zip(u, v)]
     return 0.6 / np.min(uvdist)
+
+def find_resolution(u, v):
+    if type(u[0]) == float:
+        uvdist = np.hypot(u, v)
+    else:
+        uvdist = [np.max(np.hypot(up, vp)) for up, vp in zip(u, v)]
+    return 1 / (2 * np.max(uvdist))
 
 def fill_in(val, min_pixels):
     nx = np.shape(val)[0]
