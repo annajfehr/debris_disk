@@ -1,7 +1,8 @@
-import time
-import sys
-import os
+import json
 import math
+import os
+import sys
+import time
 import numpy as np
 from debris_disk import profiles
 from debris_disk import Disk
@@ -44,10 +45,8 @@ class MCMC:
                  pscale=None):
         self.uvdata=uvdata
         self.vis = DD.UVDataset(uvdata, mode='mcmc')
-        
         self.obs_params=obs_params
         
-        self.obs_params['nu'] = DD.constants.c / self.vis.chans
         self.parse_fixed_params(fixed_args)
         self.param_dict_to_list(p0, pscale, pranges)
 

@@ -15,3 +15,4 @@ debris_disk.egg-info/PKG-INFO
 debris_disk.egg-info/SOURCES.txt
 debris_disk.egg-info/dependency_links.txt
 debris_disk.egg-info/top_level.txt
+dist/debris_disk-0.1.0-py3-none-any.whl

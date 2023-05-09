@@ -84,12 +84,12 @@ class Disk:
     def __init__(self,
                  L_star=1.,
                  sigma_crit = 1e-18, # g/cm^3
-                 inc=0,
+                 inc=0, # degrees
                  F_star=0, #microjy
                  radial_func='powerlaw',
                  radial_params={'alpha' : 1., 
-                                'Rin' : 10 * const.AU, 
-                                'Rout' : 40 * const.AU},
+                                'Rin' : 10, 
+                                'Rout' : 40},
                  gap=False,
                  gap_params=None,
                  vert_params={'Hc' : 1.,
@@ -111,36 +111,39 @@ class Disk:
         sigma_crit : float, optional
             Density of the disk at the critical radius [g/cm^2], default is
             1e-18
-        inc : float, 
+        inc : float, optional
             Inclination of the disk relative to the viewer [degrees], default is 0. 
-        radial_func : {'powerlaw', 'gaussian', 'double_powerlaw',
+        F_star : float
+            Emission from the star [microjy], default is 0
+        radial_func : {'powerlaw', 'powerlaw_errf', 'double_powerlaw',
                        'triple_powerlaw'}, optional
             Functional form of the radial profile, default is 'powerlaw'
-        radial_params : list of float
+        radial_params : dictionary of float
             Arguments for radial profile, must match radial_func. All distances
-            should be in cm. Default is [1., 10 * const.AU, 40 * const.AU].
+            should be in au. Default is {'alpha' : 1, 'Rin' : 10, 'Rout' : 40}
         gap : bool, optional
             Whether to include a Gaussian gap in the radial structure, default
             is False
         gap_params : list of float, optional
-            Required if gap. 
-            gap_params[0] : Radius of the gap's deepest point, cm
-            gap_params[1] : FWHM max of the gap, cm
-            gap_params[2] : Fractional depth of the gap, [0, 1]
-        scale_height : float, optional
-            FWHM of the disk's vertical structure, scale_height or aspect_ratio
-            is required
-        aspect_ratio: float, optional
-            Scale height = aspect_ratio * r. scale_height or aspect_ratio is
-            required
+            Required if gap. default is None
+            gap_params['r'] : Radius of the gap's deepest point, au
+            gap_params['width'] : FWHM max of the gap, au
+            gap_params['depth'] : Fractional depth of the gap, [0, 1]
+        vert_params : list of float, optional
+            Parameters for vertical structure from Fehr2023 Eq. 4.2
+            Default is {'Hc' : 1, 'Rc' : 1, 'psi' : 1}
         vert_func : {'gaussian', 'lorentzian'}, optional
             Functional form of the vertical profile, default is gaussian
         obs : dictionary of observation keywords, optional
             {'nu' : Central frequency of observation [ghz]
              'imres' : Resolution of final model image [arcsec/pixel]
              'distance' : Distance to object [parsecs]}
-            obs is required to produce an on-sky image, see
-            debris_disk.observation.Observation
+        calc_structure : boolean
+            controls whether or not to calculate the disk structure upon
+            initialization. Default is True
+        calc_image : boolean
+            controls whether to calculate synthetic image upon initialization.
+            Default is True.
         """
         
         if obs:
