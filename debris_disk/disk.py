@@ -531,8 +531,9 @@ class Disk:
         -------
         None
         """
-
-        self.im.rotate(PA)
+        
+        for im in self.ims:
+            im.rotate(PA)
 
     def save(self, outfile='model'):
         """

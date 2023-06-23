@@ -5,7 +5,7 @@ import galario.double as gd
 
 
 class UVDataset:
-    def __init__(self, f=None, mode='mcmc', stored=None, filetype='txt'):
+    def __init__(self, f=None, stored=None, filetype='txt'):
         if stored:
             for key in stored:
                 setattr(self, key, stored[key])
@@ -15,14 +15,11 @@ class UVDataset:
         self.datasets = []
         
         for file in f:
-            self.datasets.append(UVData(file, mode=mode, filetype=filetype))
+            self.datasets.append(UVData(file, filetype=filetype))
 
         self._mrs()
         self._resolution()
         self.chans = [element for ds in self.datasets for element in ds.chans]
-        if mode =='mcmc':
-            return
-
 
     def _mrs(self):
         self.mrs = [ds.mrs for ds in self.datasets]
@@ -30,13 +27,16 @@ class UVDataset:
     def _resolution(self):
         self.resolution = [ds.resolution for ds in self.datasets]
     
-    def sample(self, val=None, dxy=None, disk=None, modout='mod.txt', PA=0., dRA=0., dDec=0.):
+    def sample(self, val=None, dxy=None, disk=None, modout='mod.txt', PA=0., dRA=0., dDec=0., prefix=''):
         images = disk.ims
         for i, ds in enumerate(self.datasets):
-            ds.sample(ims=images[:ds.nchans], dxy=dxy, disk=disk, modout=str(i)+modout, PA=PA, dRA=dRA, dDec=dDec)
+            ds.sample(ims=images[:ds.nchans],
+                      dxy=dxy,
+                      modout=prefix+str(i)+modout,
+                      PA=PA,
+                      dRA=dRA,
+                      dDec=dDec)
             images = images[ds.nchans:]
-
-        
 
     def chi2(self, val=None, dxy=None, disk=None, PA=0., dRA=0., dDec=0., imchecked=False):
 
@@ -51,19 +51,16 @@ class UVDataset:
             images = images[ds.nchans:]
         return chi2
 
-    def pack(self):
-        return [ds.pack for ds in self.datasets]
 
 class UVData:
-    def __init__(self, f=None, mode='mcmc', stored=None, filetype='txt'):
+    def __init__(self, f=None, stored=None, filetype='txt'):
         if stored:
             for key in stored:
                 setattr(self, key, stored[key])
             return
-
         self.file = f
+        self.filetype=filetype
 
-       
         if filetype == 'txt':
             self.u = []
             self.v = []
@@ -75,7 +72,6 @@ class UVData:
             data = np.loadtxt(f)
             chans, index = np.unique(data[:, 5],return_index=True)
             self.chans = chans[index.argsort()]
-            
 
             for chan in self.chans:
                 indices = (data[:,5] == chan)
@@ -91,14 +87,23 @@ class UVData:
 
             self.chans *= 100
 
+        if filetype == 'fits':
+            data = fits.open(f)[0]
+            self.chans = np.arange(0, data.header['NAXIS5']) * data.header['CDELT4'] + data.header['CRVAL4']
+            self.u = np.array([data.data['UU'] * chan for chan in self.chans]).astype(np.float64)
+            self.v = np.array([data.data['VV'] * chan for chan in self.chans]).astype(np.float64)
+
+            self.re = data.data['data'][:,0,0,:,0,:,0]
+            self.im = data.data['data'][:,0,0,:,0,:,1]
+            self.w = data.data['data'][:,0,0,:,0,:,2]
+            
+            self.chans = [2.998e10/chan for chan in self.chans]
+            self.data = fits.open(f)
+
         self._mrs()
         self._resolution()
 
         self.nchans = len(self.chans)
-        if mode =='mcmc':
-            return
-
-        self.data = data
 
     def _mrs(self):
         self.mrs = np.empty(len(self.u))
@@ -110,10 +115,15 @@ class UVData:
         for i, (u, v) in enumerate(zip(self.u, self.v)):
             self.resolution[i] = find_resolution(u, v)
     
-    def sample(self, ims=None, val=None, dxy=None, disk=None, modout='mod.txt', PA=0.,
+    def sample(self, ims=None, val=None, dxy=None, disk=None, modout='mod.txt', residout=None, PA=0.,
             dRA=0., dDec=0.):
-        
-        model_vis = np.empty((np.sum(len(u) for u in self.u), 6))
+
+        print(self.file)
+        if self.filetype == 'txt':
+            model_vis = np.empty((np.sum(len(u) for u in self.u), 6))
+        if self.filetype == 'fits':
+            model_vis = self.data[0].data['data'].copy()
+
         PA *= np.pi/180
         dRA *= np.pi /(180*3600)
         dDec *= np.pi/(180*3600)
@@ -123,29 +133,48 @@ class UVData:
             ims=disk.ims
 
         start_loc = 0
-
-
+        
+        
         for i, im in enumerate(ims):
             val, dxy = prepare_image(im, self.mrs[i], self.chans[i])
+            ims[i].val = val
 
+            gd.threads(num=1)
+
+            print(i, ":", np.shape(val), dxy, dRA, dDec)
             vis = gd.sampleImage(val,
                     dxy,
                     self.u[i].copy(order='C'), 
                     self.v[i].copy(order='C'), 
                     PA=(np.pi/2+PA),
                     dRA=dRA,
-                    dDec=dDec)
+                    dDec=dDec,
+                    check=True)
             
 
             end_loc = start_loc + len(vis.real)
 
-            mod = [self.u[i], self.v[i], vis.real, vis.imag, self.w[i], [self.chans[i]/100]*len(vis.real)]
-            model_vis[start_loc:end_loc] = np.array(mod).T
+            if self.filetype=='txt':
+                mod = [self.u[i], self.v[i], vis.real, vis.imag, self.w[i], [self.chans[i]/100]*len(vis.real)]
+                model_vis[start_loc:end_loc] = np.array(mod).T
 
-            start_loc = end_loc
+                start_loc = end_loc
 
+            if self.filetype=='fits':
+                model_vis[:, 0, 0, i, 0, 0, 0] = vis.real
+                model_vis[:, 0, 0, i, 0, 1, 0] = vis.real
+                
+                model_vis[:, 0, 0, i, 0, 0, 1] = vis.imag
+                model_vis[:, 0, 0, i, 0, 1, 0] = vis.imag
 
-        np.savetxt(modout, model_vis)
+        if self.filetype=='txt':
+            np.savetxt(modout, model_vis)
+
+        if self.filetype=='fits': 
+            model = self.data.copy()
+            model[0].data['data'] = model_vis
+            model.writeto(modout, overwrite=True)
+            model.close()
 
     def chi2(self, ims=None, dxy=None, disk=None, PA=0., dRA=0., dDec=0., imchecked=False):
         chi2 = 0
@@ -172,8 +201,6 @@ class UVData:
                                  dDec=dDec)
         return chi2
 
-    def pack(self):
-        return ([self.u, self.v, self.re, self.im, self.w, self.chan])
 
 def prepare_image(im, mrs, nu):
     dxy = im.imres * np.pi /(180*3600) 

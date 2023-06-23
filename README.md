@@ -42,4 +42,5 @@ From a disk model, calculate a $`\chi^2`$ value from visibilities like
 
 ```python
 vis.chi2(mod)
-```
+
+
