@@ -17,7 +17,7 @@ class Observation:
                  D=12):
         if vis:
             self.nu = const.c / vis.chans
-            self.imres = min([np.min(mrs*(180/np.pi) * 3600/2) for mrs in vis.resolution])
+            self.imres = min([np.min(res*(180/np.pi) * 3600/2) for res in vis.resolution])
         else:
             self.nu = nu 
             self.lamb = 3e8 / nu # wavelength [m]

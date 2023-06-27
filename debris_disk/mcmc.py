@@ -44,7 +44,7 @@ class MCMC:
                  pranges,
                  pscale=None):
         self.uvdata=uvdata
-        self.vis = DD.UVDataset(uvdata, mode='mcmc')
+        self.vis = DD.UVDataset(uvdata)#mode='mcmc')
         self.obs_params=obs_params
         
         self.parse_fixed_params(fixed_args)
