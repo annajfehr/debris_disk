@@ -296,43 +296,42 @@ def fill_in(val, min_pixels):
     return new
 
 
-def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, residual=False, filetype='fits'):
+def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False, filetype='fits'):
     dRA *= np.pi/180/3600
     dDec *= np.pi/180/3600
     PA *= np.pi/180 
-
+    modfile=fits.open(modfile+str('.fits'))
+    
     if type(datafile) == list:
         cs = 0
         for i, df in enumerate(datafile):
             if fileout: 
                 if filetype=='fits':
-                    cs += fits_chiSq(df, modfile, str(i)+fileout, dxy, dRA, dDec, PA, residual)
+                    cs += fits_chiSq(df, modfile, str(i)+fileout, dxy, dRA, dDec, PA, F_star, residual)
                 if filetype=='txt':
-                    cs += txt_chiSq(df, modfile, str(i)+fileout, dxy, dRA, dDec, PA, residual)
+                    cs += txt_chiSq(df, modfile, str(i)+fileout, dxy, dRA, dDec, PA, F_star,  residual)
             else:
                 if filetype=='fits':
-                    cs += fits_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, residual)
+                    cs += fits_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, F_star, residual)
                 if filetype=='txt':
-                    cs += txt_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, residual)
+                    cs += txt_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, F_star, residual)
         return cs
     else:
         if filetype=='fits':
-            return fits_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, residual)
+            return fits_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, F_star, residual)
         if filetype=='txt':
-            return txt_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, residual)
+            return txt_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, F_star, residual)
 
-def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, residual=False):
+def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False):
     # load image and header
-    fits_file=fits.open(modfile+str('.fits'))
-    image=fits_file[0].data.astype('double') # important for Galario sometimes
-    dpix_deg=fits_file[0].header['CDELT2']
+    image=modfile[0].data.astype('double') # important for Galario sometimes
+    dpix_deg=modfile[0].header['CDELT2']
     dpix_rad=dpix_deg*np.pi/180.
 
     u, v, Vreal, Vimag, w, lams = np.require(np.loadtxt(datafile, unpack=True), requirements='C')
     mrs = find_mrs(u, v)
     image = prepare_val(image, dpix_rad, mrs, 3.3e11)
-    fstar=0
-    Vstar=fstar*np.exp(2*np.pi*1j*(u*dRA +v*dDec))
+    Vstar=F_star*np.exp(2*np.pi*1j*(u*dRA +v*dDec))
 
     if fileout:
         Vmodel = gd.sampleImage(image,
@@ -363,24 +362,17 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, re
                      origin='lower' )
     return chi2
 
-def fits_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, residual=False):
-        modfile_name = modfile + str('.fits') # turn your "modfile" name into a string with a .fits on it so that you
-                                              # can manipulate your model fits file
-
-        model_fits = fits.open(modfile_name) # I now open the model fits file
+def fits_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False):
+        model_fits = fits.open(modfile) # I now open the model fits file
+        
         if dxy == None:
             dxy = model_fits[0].header['CDELT2']
             dxy *= np.pi/180
             
-        print(dxy)
         model = model_fits[0].data           # and only select the data. Important to do this
-        model = model.byteswap().newbyteorder().squeeze() # I have no clue why you need to do this, but you do,
-                                                          # at least for the data I had. Otherwise you get a really
-                                                          # strange error.
-        model = model[:,::-1] # I believe this flips the data on one axis. Again this may not be important for you,
-                              # but for whatever reason I had to do this because my model was flipped compared to data
-        model_cor = model.copy(order='C') # This was also thrown in due to some error. May not be necessary. This might
-                                      # fix an error that you get though 
+        model = model.byteswap().newbyteorder().squeeze() 
+        model = model[:,::-1] 
+        model_cor = model.copy(order='C') 
         model_fits.close() # always close your fits files when you are done with them!! :) 
 
         data_vis = fits.open(datafile) # open the data visibilities file
@@ -397,6 +389,7 @@ def fits_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, r
     #new code (Saad)
         freq_start = freq0 - (n_spw - 1.0) / 2.0 * delta_freq
 
+        Vstar=F_star*np.exp(2*np.pi*1j*(u*dRA +v*dDec))
         for i in range(n_spw):
                 freq = freq_start + i * delta_freq
                 u, v = (data_vis[0].data['UU'] * freq).astype(np.float64), (data_vis[0].data['VV'] * freq).astype(np.float64)
@@ -406,6 +399,7 @@ def fits_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, r
                 image = np.require(image, requirements='C') # and this is from the galario documentation -- you get some stupid
 
                 vis = gd.sampleImage(image[:,:], dxy, u, v, dRA = dRA, dDec = dDec, PA=PA+np.pi/2.0, origin='lower')
+                vis = vis + Vstar
 
                 model_vis[:,0,0,i,0,0,0] = vis.real
                 model_vis[:,0,0,i,0,1,0] = vis.real # here I throw the created model visibilities into corresponding 
@@ -460,7 +454,6 @@ def chiSqStack(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, residua
                 if dxy == None:
                     dxy = model_fits[0].header['CDELT2']
 
-                print(dxy)
                 model = model_fits[0].data           # and only select the data. Important to do this
                 model = model.byteswap().newbyteorder().squeeze() # I have no clue why you need to do this, but you do,
                                                                   # at least for the data I had. Otherwise you get a really
@@ -474,7 +467,6 @@ def chiSqStack(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, residua
                 freq = freq_start + i * delta_freq
                 u, v = (data_vis[0].data['UU'] * freq).astype(np.float64), (data_vis[0].data['VV'] * freq).astype(np.float64)
                 foo = model_cor # this is just the corrected model image which i renamed for some weird reason
-                print(np.max(model_cor))
 
                 vis = gd.sampleImage(model_cor[:,:], dxy, u, v, dRA = dRA, dDec = dDec, PA=PA+np.pi/2.0, origin='lower')
 

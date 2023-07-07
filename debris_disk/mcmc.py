@@ -237,7 +237,7 @@ def param_list_to_dict(pos,
     params_dict['radial_params'] = radial_dict
     params_dict['vert_params'] = vert_dict
 
-    viewing_params = {'PA' : params_dict.pop('PA'), 'dRA' : params_dict.pop('dRA'), 'dDec' : params_dict.pop('dDec')}
+    viewing_params = {'PA' : params_dict.pop('PA'), 'dRA' : params_dict.pop('dRA'), 'dDec' : params_dict.pop('dDec'), 'F_star' : params_dict.pop('F_star')}
 
     return params_dict, viewing_params
 
@@ -276,6 +276,7 @@ def lnpost(p,
                                                      num_vert,
                                                      fixed_rad_params,
                                                      fixed_vert_params)
+    disk_params['sigma_crit'] = 10 ** disk_params['sigma_crit']
     if verbose:
         print('DISK_PARAM = ', disk_params)
         print('OBS_PARAM = ', viewing_params)

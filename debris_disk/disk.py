@@ -601,7 +601,6 @@ class Disk:
 
         ax.set_yscale('log')
         ax.set_xscale('log')
-        print(self.zmax/const.AU)
         ax.set_ylim(0.1, self.zmax/const.AU)
         ax.set_xlim(self.rbounds[0]/const.AU, self.rbounds[1]/const.AU-1)
         ax.set_aspect('auto')
