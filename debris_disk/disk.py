@@ -193,6 +193,8 @@ class Disk:
             self._im(obs) # Integrate to find image intensities
 
     def rp_convert(self, params):
+        if self.radial_func == 'gaussian':
+            return profiles.gaussian.conversion(params, const.AU)
         if self.radial_func == 'powerlaw':
             return profiles.powerlaw.conversion(params, const.AU)
         if self.radial_func == 'powerlaw_errf':
@@ -261,9 +263,10 @@ class Disk:
             self.rbounds = profiles.triple_powerlaw.limits(**self.radial_params)
         
         self.rbounds[1] = min(self.rbounds[1], self.max_r)
-        self.rbounds[0] = 0.1
+        self.rbounds[0] = self.modres/2
         if self.rbounds[0] < self.modres:
-            self.rbounds[0] = self.modres
+            pass
+            # self.rbounds[0] = self.modres
         assert (self.rbounds[0]>=0) and (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form"
     
     def H(self, Hc, Rc, psi):
@@ -399,12 +402,14 @@ class Disk:
         H2d = np.outer(np.ones(self.nz), H/(2*np.sqrt(2*np.log(2))))
         self.H2d= H2d
         if self.vert_func =='gaussian':
-            self.vert  = profiles.gaussian.val(zz, H2d)/(Hnorm*np.sqrt(2*np.pi))
-            return profiles.gaussian.val(zz, H2d)/(Hnorm*np.sqrt(2*np.pi))
+            self.vert_arr = profiles.gaussian.val(zz, H2d)
  
         if self.vert_func =='lorentzian':
-            return 2*np.pi*profiles.gaussian.val(zz, H2d)/(Hnorm)
-    
+            self.vert_arr =  2*np.pi*profiles.gaussian.val(zz, H2d)/(Hnorm)
+        
+        self.vert_arr /= np.outer(np.ones(self.nz), np.sum(self.vert_arr, axis=0))
+        return self.vert_arr
+
     def _T2d(self, rr, zz):
         """
         Populate self.T2d, an nr x nz array where self.T2d[i, j] is the
@@ -473,6 +478,9 @@ class Disk:
 
         slope = (self.nz-1)/(self.zmax)
         zind = slope * np.abs(tz)
+
+        self.rind = rind
+        self.zind  = zind
 
         #rind     = np.interp(tr.flatten(),self.r,list(range(self.nr)))             #rf,nrc
         #zind     = np.interp(np.abs(tz).flatten(),self.z,list(range(self.nz))) #zf,nzc
@@ -545,6 +553,7 @@ class Disk:
         None
         """
         for i, im in enumerate(self.ims):
+            im.square()
             im.save(self.obs, outfile+str(i)+'.fits')
 
     def image(self):

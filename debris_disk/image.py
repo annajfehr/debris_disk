@@ -40,15 +40,18 @@ class Image:
         self.ny = np.shape(val)[0]
 
         if modres:
-            self.val *= modres
+            self.val *= modres*modres
         if imres:
             self.imres = imres
+        print(self.imres)
 
         if axes:
             self.x = axes[0]
             self.y = axes[1]
         else:
             self._axes()
+        print(np.max(self.val))
+        print(np.sum(self.val))
 
     def _axes(self):
         start = int(self.nx/2)
@@ -100,9 +103,4 @@ class Image:
         self.val *= self.beam
 
     def add_star(self, f_star):
-        if (self.nx % 2) and (self.ny % 2):
-            self.val[int(self.ny/2), int(self.nx/2)] += f_star / 1e6
-        else:
-            centery = int(self.ny/2)
-            centerx = int(self.nx/2)
-            self.val[centery-1:centery+1, centerx-1:centerx+1] += f_star / (1e6 * 4)
+        self.val[int(self.ny/2), int(self.nx/2)] += f_star / 1e6
