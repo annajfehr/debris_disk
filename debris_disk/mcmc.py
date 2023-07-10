@@ -1,5 +1,6 @@
 import json
 import math
+import random
 import os
 import sys
 import time
@@ -42,10 +43,12 @@ class MCMC:
                  fixed_args,
                  p0,
                  pranges,
+                 filetype='txt',
                  pscale=None):
         self.uvdata=uvdata
-        self.vis = DD.UVDataset(uvdata)#mode='mcmc')
+        self.vis = DD.UVDataset(uvdata, filetype=filetype)
         self.obs_params=obs_params
+        self.filetype=filetype
         
         self.parse_fixed_params(fixed_args)
         self.param_dict_to_list(p0, pscale, pranges)
@@ -150,6 +153,7 @@ class MCMC:
             parallel=False, 
             restart=None,
             outfile='mcmc.txt',
+            mode='old',
             verbose=False):
         print("\nEmcee setup:")
         print("   Steps = " + str(nsteps))
@@ -188,6 +192,8 @@ class MCMC:
                                         self.fixed_args,
                                         self.uvdata,
                                         self.vis.__dict__,
+                                        self.filetype,
+                                        mode,
                                         verbose], 
                                   pool=pool)
 
@@ -231,7 +237,7 @@ def param_list_to_dict(pos,
     params_dict['radial_params'] = radial_dict
     params_dict['vert_params'] = vert_dict
 
-    viewing_params = {'PA' : params_dict.pop('PA'), 'dRA' : params_dict.pop('dRA'), 'dDec' : params_dict.pop('dDec')}
+    viewing_params = {'PA' : params_dict.pop('PA'), 'dRA' : params_dict.pop('dRA'), 'dDec' : params_dict.pop('dDec'), 'F_star' : params_dict.pop('F_star')}
 
     return params_dict, viewing_params
 
@@ -258,6 +264,8 @@ def lnpost(p,
            fixed_args,
            uvdata,
            uvdict,
+           filetype,
+           mode,
            verbose):
     sys.stdout.flush()
     if not check_boundary(ranges, p): 
@@ -268,15 +276,24 @@ def lnpost(p,
                                                      num_vert,
                                                      fixed_rad_params,
                                                      fixed_vert_params)
+    disk_params['sigma_crit'] = 10 ** disk_params['sigma_crit']
     if verbose:
         print('DISK_PARAM = ', disk_params)
         print('OBS_PARAM = ', viewing_params)
 
     mod = Disk(obs=obs_params, **fixed_args, **disk_params)
-    vis = DD.UVDataset(stored=uvdict)
-    #vis = DD.UVDataset(uvdata, mode='mcmc')
 
-    chi2 = vis.chi2(disk=mod, **viewing_params)
+    if mode=='new':
+        vis = DD.UVDataset(stored=uvdict)
+        chi2 = vis.chi2(disk=mod, **viewing_params)
+    if mode=='old':
+        try:
+            key = str(np.random.randint(99999))
+            mod.save(key+'mcmc')
+            chi2 = DD.uvdata.chiSq(uvdata, key+'mcmc0', filetype=filetype, **viewing_params)
+            os.remove(key+'mcmc0.fits')
+        except:
+            chi2 = -np.inf
 
     if math.isnan(chi2):
         return -np.inf

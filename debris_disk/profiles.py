@@ -27,7 +27,7 @@ class powerlaw_errf:
         #fac = 3.451 *1.496e13 # 99.99 percentile
         #rmin = max(0, Rin - lin*fac)
         #rmax = Rout + lout*fac
-        return [1, Rout + 100 * 1.496e13]
+        return [0., Rout + 100 * 1.496e13]
     
     def conversion(params, unit):
         params['Rin'] *= unit
@@ -60,7 +60,7 @@ class double_powerlaw:
 
         if Rout:
             rmax = min(rmax, Rout + lout*fac)
-        return [rmin, rmax]
+        return [0., rmax]
     
     def conversion(params, unit):
         params['rc'] *= unit
