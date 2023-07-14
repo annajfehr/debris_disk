@@ -43,15 +43,12 @@ class Image:
             self.val *= modres*modres
         if imres:
             self.imres = imres
-        print(self.imres)
 
         if axes:
             self.x = axes[0]
             self.y = axes[1]
         else:
             self._axes()
-        print(np.max(self.val))
-        print(np.sum(self.val))
 
     def _axes(self):
         start = int(self.nx/2)

@@ -60,7 +60,7 @@ class double_powerlaw:
 
         if Rout:
             rmax = min(rmax, Rout + lout*fac)
-        return [0., rmax]
+        return [rmin, rmax]
     
     def conversion(params, unit):
         params['rc'] *= unit
