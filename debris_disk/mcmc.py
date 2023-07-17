@@ -154,6 +154,7 @@ class MCMC:
             restart=None,
             outfile='mcmc.txt',
             mode='old',
+            file_dir='.',
             verbose=False):
         print("\nEmcee setup:")
         print("   Steps = " + str(nsteps))
@@ -170,6 +171,8 @@ class MCMC:
 
         steps=[]
 
+        assert os.path.exists(file_dir)
+
         if parallel:
             pool=MPIPool()
             if not pool.is_master():
@@ -178,6 +181,15 @@ class MCMC:
         else:
             pool=None
 
+        if mode=='old':
+            if type(self.obs_params) == dict:
+                while not np.isscalar(self.obs_params['nu']):
+                    self.obs_params['nu'] = self.obs_params['nu'][0]
+                self.obs_params['nu'] = np.array([self.obs_params['nu']])
+            else:
+                while not np.isscalar(self.obs_params['nu']):
+                    self.obs_params.nu = self.obs_params.nu[0]
+                self.obs_params.nu = np.array([self.obs_params.nu])
 
         sampler = EnsembleSampler(nwalkers, 
                                   self.ndim, 
@@ -194,6 +206,7 @@ class MCMC:
                                         self.vis.__dict__,
                                         self.filetype,
                                         mode,
+                                        file_dir,
                                         verbose], 
                                   pool=pool)
 
@@ -266,6 +279,7 @@ def lnpost(p,
            uvdict,
            filetype,
            mode,
+           file_dir,
            verbose):
     sys.stdout.flush()
     if not check_boundary(ranges, p): 
@@ -289,11 +303,13 @@ def lnpost(p,
     if mode=='old':
         try:
             key = str(np.random.randint(99999))
-            mod.save(key+'mcmc')
-            chi2 = DD.uvdata.chiSq(uvdata, key+'mcmc0', filetype=filetype, **viewing_params)
-            os.remove(key+'mcmc0.fits')
+            mod.save(file_dir+key+'mcmc')
+            chi2 = DD.uvdata.chiSq(uvdata, file_dir+key+'mcmc0', filetype=filetype, **viewing_params)
+            os.remove(file_dir+key+'mcmc0.fits')
         except:
-            chi2 = -np.inf
+            if os.path.exists(file_dir+key+'mcmc0.fits'):
+                os.remove(file_dir+key+'mcmc0.fits')
+            return -np.inf
 
     if math.isnan(chi2):
         return -np.inf

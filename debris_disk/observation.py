@@ -17,11 +17,10 @@ class Observation:
                  D=12):
         if vis:
             self.nu = const.c / vis.chans
-            self.imres = min([np.min(res*(180/np.pi) * 3600/5) for res in vis.resolution])
+            self.imres = min([np.min(res*(180/np.pi) * 3600/2) for res in vis.resolution])
         else:
             self.nu = nu 
-            self.lamb = 3e8 / nu # wavelength [m]
-            self.imres = imres
+            self.imres=imres
         if json_file and sys_name:
             f = open(json_file)
             sys_props = json.load(f)
@@ -29,7 +28,9 @@ class Observation:
             self.Lstar = sys_props[sys_name]['Lstar']['median']
         else:
             self.distance = distance
+        self.lamb = 3e8 / nu # wavelength [m]
         self.D = D # antennae diameter [m]
+        self.beam_fwhm = np.min(1.13 * self.lamb/self.D)
     
     def header(self, nX):
         '''

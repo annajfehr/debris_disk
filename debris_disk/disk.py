@@ -151,6 +151,7 @@ class Disk:
                 obs = Observation(**obs)
             self.obs = obs
             self.modres = obs.imres * obs.distance * const.AU
+            #self.max_r = obs.distance * obs.beam_fwhm * 3600 * 180 / np.pi * const.AU
             self.max_r = obs.distance * 8 * const.AU
         else:
             self.modres = 0.5 * const.AU
@@ -263,10 +264,8 @@ class Disk:
             self.rbounds = profiles.triple_powerlaw.limits(**self.radial_params)
         
         self.rbounds[1] = min(self.rbounds[1], self.max_r)
-        self.rbounds[0] = self.modres/2
         if self.rbounds[0] < self.modres:
-            pass
-            # self.rbounds[0] = self.modres
+            self.rbounds[0] = self.modres/2
         assert (self.rbounds[0]>=0) and (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form"
     
     def H(self, Hc, Rc, psi):
