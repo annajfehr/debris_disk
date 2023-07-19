@@ -358,7 +358,7 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_
                      w,
                      dRA=dRA,
                      dDec=dDec,
-                     PA=PA,
+                     PA=PA+np.pi/2.0,
                      origin='lower' )
     return chi2
 

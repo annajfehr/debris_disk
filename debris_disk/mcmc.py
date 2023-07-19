@@ -43,11 +43,15 @@ class MCMC:
                  fixed_args,
                  p0,
                  pranges,
+                 name=None,
                  filetype='txt',
                  pscale=None):
         self.uvdata=uvdata
         self.vis = DD.UVDataset(uvdata, filetype=filetype)
-        self.obs_params=obs_params
+        # self.obs_params=obs_params
+        self.obs_params = DD.Observation(vis=self.vis,
+                                    json_file='/arc/projects/ARKS/parametric_modeling/REASONS.json',
+                                    sys_name=name)
         self.filetype=filetype
         
         self.parse_fixed_params(fixed_args)
@@ -187,7 +191,7 @@ class MCMC:
                     self.obs_params['nu'] = self.obs_params['nu'][0]
                 self.obs_params['nu'] = np.array([self.obs_params['nu']])
             else:
-                while not np.isscalar(self.obs_params['nu']):
+                while not np.isscalar(self.obs_params.nu):
                     self.obs_params.nu = self.obs_params.nu[0]
                 self.obs_params.nu = np.array([self.obs_params.nu])
 
