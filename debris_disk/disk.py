@@ -142,7 +142,7 @@ class Disk:
             controls whether to calculate synthetic image upon initialization.
             Default is True.
         """
-        self.max_mem = (memory / 16 - 0.5) * 1e9
+        self.max_mem = .75 * memory/16 * 1e9
 
         if obs:
             if type(obs) == dict:
@@ -191,6 +191,7 @@ class Disk:
                 return
             if not self.incline(): # Produce 3d sky plane density
                 return
+        
         self.mod = True
         if obs and calc_image:
             self._im(obs) # Integrate to find image intensities
@@ -282,7 +283,7 @@ class Disk:
         #    self.rbounds[1] = 5.0*self.modres
         assert (self.rbounds[0]>=0), "Cannot find bounds from functional form, rmin<0"
         assert (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form, rmin>rmax"
-    
+ 
     def H(self, Hc, Rc, psi):
         """
         Determine scale height values
@@ -474,9 +475,8 @@ class Disk:
             self.nY += 1
 
         nS = int(6 * Slim / self.modres)
-        # print(self.nX, self.nY, nS)
         
-        if self.nX * self. nY * nS * 32 > self.max_mem:
+        if self.nX * self. nY * nS * 8 * 5 > self.max_mem: # 8 bits/float, 5 copies of the array    
             return False
 
         X = np.linspace(-Xlim, Xlim, self.nX)
@@ -529,11 +529,15 @@ class Disk:
             kap = 10 * (n/1e12)**const.beta
             tau *= kap
 
-            Knu_dust = kap*self.rho      # - dust absorbing coefficient
-            Snu = BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
+            # Knu_dust = kap*self.rho      # - dust absorbing coefficient
+            # Snu = BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
 
-            arg = Knu_dust*Snu*np.exp(-tau)
-            self.ims.append(Image(trapezoid(arg, self.S, axis=2), obs.imres, modres=self.modres))
+            #arg = kap*self.rho*np.exp(-tau)*BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
+            self.ims.append(Image(trapezoid(kap*self.rho*np.exp(-tau)*BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.), 
+                                            self.S, 
+                                            axis=2),
+                                  obs.imres,
+                                  modres=self.modres))
             self.ims[-1].add_star(self.F_star)
 
     def square(self):

@@ -10,6 +10,7 @@ from debris_disk import Disk
 import debris_disk as DD
 from schwimmbad import MPIPool
 from emcee import EnsembleSampler
+#from memory_profiler import profile 
 
 class MCMC:
     """
@@ -47,11 +48,11 @@ class MCMC:
                  filetype='txt',
                  pscale=None):
         self.uvdata=uvdata
-        self.vis = DD.UVDataset(uvdata, filetype=filetype)
-        # self.obs_params=obs_params
-        self.obs_params = DD.Observation(vis=self.vis,
-                                    json_file='/arc/projects/ARKS/parametric_modeling/REASONS.json',
-                                    sys_name=name)
+        vis = DD.UVDataset(uvdata, filetype=filetype)
+        self.obs_params = DD.Observation(vis=vis,
+                                         json_file='/arc/projects/ARKS/parametric_modeling/REASONS.json',
+                                         sys_name=name)
+        self.vis = vis.__dict__
         self.filetype=filetype
         
         self.parse_fixed_params(fixed_args)
@@ -207,7 +208,7 @@ class MCMC:
                                         self.obs_params,
                                         self.fixed_args,
                                         self.uvdata,
-                                        self.vis.__dict__,
+                                        self.vis,
                                         self.filetype,
                                         mode,
                                         file_dir,
@@ -269,7 +270,7 @@ def check_boundary(ranges, pos):
 
     return True
 
-
+#@profile
 def lnpost(p,
            params,
            ranges,
@@ -287,6 +288,8 @@ def lnpost(p,
            verbose):
     sys.stdout.flush()
     if not check_boundary(ranges, p): 
+        if verbose:
+            print('Parameters out of bounds')
         return -np.inf
     disk_params, viewing_params = param_list_to_dict(p, 
                                                      params, 
@@ -301,18 +304,30 @@ def lnpost(p,
 
     mod = Disk(obs=obs_params, **fixed_args, **disk_params)
 
+    if verbose:
+        print('Generated model')
+
     if mode=='new':
-        vis = DD.UVDataset(stored=uvdict)
-        chi2 = vis.chi2(disk=mod, **viewing_params)
+        try:
+            vis = DD.UVDataset(stored=uvdict)
+            chi2 = vis.chi2(disk=mod, **viewing_params)
+        except:
+            if verbose:
+                print('Model not evaluated')
+            return -np.inf
     if mode=='old':
         try:
             key = str(np.random.randint(99999))
             mod.save(file_dir+key+'mcmc')
+            del mod
             chi2 = DD.uvdata.chiSq(uvdata, file_dir+key+'mcmc0', filetype=filetype, **viewing_params)
             os.remove(file_dir+key+'mcmc0.fits')
         except:
             if os.path.exists(file_dir+key+'mcmc0.fits'):
                 os.remove(file_dir+key+'mcmc0.fits')
+
+            if verbose:
+                print('Model not evaluated')
             return -np.inf
 
     if math.isnan(chi2):
