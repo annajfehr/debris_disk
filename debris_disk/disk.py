@@ -5,6 +5,7 @@ import debris_disk.constants as const
 from debris_disk.image import Image
 from debris_disk.observation import Observation
 from debris_disk import profiles
+# from memory_profiler import profile
 
 class Disk:
     """
@@ -55,12 +56,6 @@ class Disk:
         nr x nz array of surface densities at rr, zz positions
     T2d : array of floats
         nr x nz array of temperatures at rr, zz positions
-    nx : int
-        Number of pixels along x axis of final image
-    ny : int
-        Number of pixels along y axis of final image
-    nS : int
-        Number of pixels along line of sight of 3d density array
     S : array of floats
         nx x ny x ns array of line of sight distance
     rho : array of floats
@@ -90,6 +85,7 @@ class Disk:
                  radial_params={'alpha' : 1., 
                                 'Rin' : 10, 
                                 'Rout' : 40},
+                 rmax=None, # arcsec
                  gap=False,
                  gap_params=None,
                  vert_params={'Hc' : 1.,
@@ -99,7 +95,8 @@ class Disk:
                  rbounds=None,
                  obs=None,
                  calc_structure=True,
-                 calc_image=True):
+                 calc_image=True,
+                 memory=32):
         """
         Constructs disk object, including density arrays and on sky image, if
         given sufficient parameters.
@@ -145,17 +142,20 @@ class Disk:
             controls whether to calculate synthetic image upon initialization.
             Default is True.
         """
-        
+        self.max_mem = .75 * memory/16 * 1e9
+
         if obs:
             if type(obs) == dict:
                 obs = Observation(**obs)
             self.obs = obs
             self.modres = obs.imres * obs.distance * const.AU
-            #self.max_r = obs.distance * obs.beam_fwhm * 3600 * 180 / np.pi * const.AU
-            self.max_r = obs.distance * 8 * const.AU
+            # self.max_r = obs.distance * 8 * const.AU
+            self.max_r = obs.distance * obs.beam_fwhm * 3600 * 180 / np.pi * const.AU
         else:
             self.modres = 0.5 * const.AU
             self.max_r = 50 * 8 * const.AU
+        if rmax:
+            self.max_r = obs.distance * rmax * const.AU
 
         if 'Rin' in radial_params:
             if radial_params['Rin'] > radial_params['Rout']:
@@ -187,8 +187,11 @@ class Disk:
         self.vert_params = self.vp_convert(vert_params.copy())
 
         if calc_structure:
-            self.structure2d()
-            self.incline() # Produce 3d sky plane density
+            if not self.structure2d():
+                return
+            if not self.incline(): # Produce 3d sky plane density
+                return
+        
         self.mod = True
         if obs and calc_image:
             self._im(obs) # Integrate to find image intensities
@@ -220,7 +223,7 @@ class Disk:
         else:
             self._rbounds() # Find radial extent
 
-        # Set number of pixels in 2d radial array to 10 times the desired final
+        # Set number of pixels in 2d radial array to 5 times the desired final
         # image resolution
         self.nr = int(5  * (self.rbounds[1] - self.rbounds[0]) / self.modres) 
 
@@ -232,12 +235,20 @@ class Disk:
         H, Hnorm = self.H(**self.vert_params)
 
         self._zmax(H) # Find vertical extent
-        self.nz = int(5 * self.zmax / self.modres) # 10x final image resolution
+        self.nz = int(5 * self.zmax / self.modres) # 5x final image resolution
+
+        # print('Rbounds = ', self.rbounds)
+        # print(self.nr, self.nz)
+        if self.nr * self.nr * self.nz > 2e9/15:
+            #     return False
+            pass
+    
         self.z = np.linspace(0, self.zmax, self.nz)
         
         rr, zz = np.meshgrid(self.r, self.z)
         assert self._rho2d(rr, zz, H, Hnorm)  # create 2d disk density structure
         assert self._T2d(rr, zz) # Calculate 2d temperature array
+        return True
 
     def _rbounds(self):
         """Set self.rbounds, the inner and outer radii of the disk where the
@@ -266,8 +277,13 @@ class Disk:
         self.rbounds[1] = min(self.rbounds[1], self.max_r)
         if self.rbounds[0] < self.modres:
             self.rbounds[0] = self.modres/2
-        assert (self.rbounds[0]>=0) and (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form"
-    
+        if self.rbounds[1] < self.modres:
+            self.rbounds[1] = 5.0*self.modres
+        #if self.rbounds[1]<self.rbounds[0]:
+        #    self.rbounds[1] = 5.0*self.modres
+        assert (self.rbounds[0]>=0), "Cannot find bounds from functional form, rmin<0"
+        assert (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form, rmin>rmax"
+ 
     def H(self, Hc, Rc, psi):
         """
         Determine scale height values
@@ -311,7 +327,10 @@ class Disk:
         
         if self.vert_func == 'lorentzian':
             _, self.zmax = profiles.lorentzian.limits(H[-1])
-    
+
+        if self.zmax < self.modres:
+            self.zmax = self.modres/2
+
     def _rho2d(self, rr, zz, H, Hnorm):
         """
         Initialize self.rho2d, a nr x nz matrix where self.rho2d[i, j] is the
@@ -455,8 +474,11 @@ class Disk:
         if self.nY % 2 != 0:
             self.nY += 1
 
-        nS = int(10 * Slim / self.modres)
+        nS = int(6 * Slim / self.modres)
         
+        if self.nX * self. nY * nS * 8 * 5 > self.max_mem: # 8 bits/float, 5 copies of the array    
+            return False
+
         X = np.linspace(-Xlim, Xlim, self.nX)
         Y = np.linspace(-Ylim, Ylim, self.nY)
         S = np.linspace(-Slim, Slim, nS)
@@ -466,29 +488,26 @@ class Disk:
         self.Slim = Slim
 
         xx, yy, self.S = np.meshgrid(X, Y, S)
-        
         #re-define disk midplane coordinates to be in line with radiative transfer grid
         tz = yy*sininc+self.S*cosinc # z locations of points
         ty = yy*cosinc-self.S*sininc # y locations of points if disk was face on
+        del yy
         tr = np.sqrt(xx**2+ty**2)    # r locations of points
-
+        del xx
+        del ty
         slope = (self.nr-1)/(self.rbounds[1]-self.rbounds[0])
         rind = slope * (tr-self.rbounds[0])
-
+        del tr
         slope = (self.nz-1)/(self.zmax)
         zind = slope * np.abs(tz)
-
-        self.rind = rind
-        self.zind  = zind
-
-        #rind     = np.interp(tr.flatten(),self.r,list(range(self.nr)))             #rf,nrc
-        #zind     = np.interp(np.abs(tz).flatten(),self.z,list(range(self.nz))) #zf,nzc
-        #interpolate onto coordinates xind,yind 
+        del tz
+        
         self.T=ndimage.map_coordinates(self.T2d,[[zind],[rind]],order=5).reshape(self.nY,self.nX, nS) 
         self.T[self.T<=0] = np.min(self.T2d)
         self.rho=ndimage.map_coordinates(self.rho2d,[[zind],[rind]],order=5).reshape(self.nY, self.nX, nS)  
         assert np.shape(self.S) == np.shape(self.T)
         assert np.shape(self.S) == np.shape(self.rho)
+        return True
 
     def _im(self, obs):
         """
@@ -510,11 +529,15 @@ class Disk:
             kap = 10 * (n/1e12)**const.beta
             tau *= kap
 
-            Knu_dust = kap*self.rho      # - dust absorbing coefficient
-            Snu = BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
+            # Knu_dust = kap*self.rho      # - dust absorbing coefficient
+            # Snu = BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
 
-            arg = Knu_dust*Snu*np.exp(-tau)
-            self.ims.append(Image(trapezoid(arg, self.S, axis=2), obs.imres, modres=self.modres))
+            #arg = kap*self.rho*np.exp(-tau)*BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
+            self.ims.append(Image(trapezoid(kap*self.rho*np.exp(-tau)*BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.), 
+                                            self.S, 
+                                            axis=2),
+                                  obs.imres,
+                                  modres=self.modres))
             self.ims[-1].add_star(self.F_star)
 
     def square(self):

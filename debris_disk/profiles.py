@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.special import erf
+from scipy.optimize import fsolve 
 
 class powerlaw:
     def val(r, alpha, Rin, Rout, lin=0.01, lout=0.01):
@@ -24,10 +25,12 @@ class powerlaw_errf:
         return inner_edge * outer_edge * (r/Rin)**(-alpha)
 
     def limits(alpha, Rin, Rout, sigma_in=1e-10, sigma_out=1e-10):
-        #fac = 3.451 *1.496e13 # 99.99 percentile
-        #rmin = max(0, Rin - lin*fac)
-        #rmax = Rout + lout*fac
-        return [0., Rout + 100 * 1.496e13]
+        max_val = Rin * powerlaw_errf.val(Rin, alpha, Rin, Rout, sigma_in, sigma_out)
+        f = lambda x : (x * powerlaw_errf.val(x, alpha, Rin, Rout, sigma_in, sigma_out)) - max_val * 0.01
+        Rmax = fsolve(f, Rout)[0]
+        if Rmax < Rout:
+            Rmax = 2 * Rout
+        return [0., Rmax]
     
     def conversion(params, unit):
         params['Rin'] *= unit
@@ -44,7 +47,7 @@ class double_powerlaw:
         if Rout:
             value *= (1+np.tanh((Rout-r)/lout))
 
-        return value / np.max(value)
+        return value
     
     def limits(rc, alpha_in, alpha_out, gamma,
                Rin=None, Rout=None, lin=0.01, lout=0.01):
@@ -58,9 +61,15 @@ class double_powerlaw:
         else:
             rmin = 0
 
-        if Rout:
-            rmax = min(rmax, Rout + lout*fac)
-        return [rmin, rmax]
+        max_val = rc * double_powerlaw.val(rc, rc, alpha_in, alpha_out, gamma)
+        f = lambda x : (x * double_powerlaw.val(x, rc, alpha_in, alpha_out, gamma)) - max_val * 0.1
+        Rmax = fsolve(f, rc*3)[0]
+        if Rmax < rc:
+            Rmax = rmax
+        if Rmax < rmin:
+            Rmax = 3.0*np.abs(rc)
+            rmin = 0
+        return [rmin, Rmax]
     
     def conversion(params, unit):
         params['rc'] *= unit

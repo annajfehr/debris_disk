@@ -19,7 +19,8 @@ class UVDataset:
 
         self._mrs()
         self._resolution()
-        self.chans = [element for ds in self.datasets for element in ds.chans]
+        self.chans = [ds.chans for ds in self.datasets]
+        #self.chans = [element for ds in self.datasets for element in ds.chans]
 
     def _mrs(self):
         self.mrs = [ds.mrs for ds in self.datasets]
@@ -27,20 +28,21 @@ class UVDataset:
     def _resolution(self):
         self.resolution = [ds.resolution for ds in self.datasets]
     
-    def sample(self, disk=None, ims=None, modout='mod.txt', PA=0., dRA=0., dDec=0., prefix=''):
+    def sample(self, disk=None, ims=None, modout='mod.txt', PA=0., dRA=0., dDec=0., F_star=0, prefix=''):
         if ims:
             images = ims
         else:
             images = disk.ims
         for i, ds in enumerate(self.datasets):
-            ds.sample(ims=images[:ds.nchans],
+            ds.sample(ims=[images[0]],
                       modout=prefix+str(i)+modout,
                       PA=PA,
                       dRA=dRA,
-                      dDec=dDec)
-            images = images[ds.nchans:]
+                      dDec=dDec,
+                      F_star=F_star)
+            images = images[1:]
 
-    def chi2(self, val=None, dxy=None, disk=None, PA=0., dRA=0., dDec=0., imchecked=False):
+    def chi2(self, val=None, dxy=None, disk=None, PA=0., dRA=0., dDec=0., F_star=0,  imchecked=False):
 
         if not disk.mod:
             return np.inf
@@ -48,9 +50,11 @@ class UVDataset:
         chi2=0
 
         images = disk.ims
+
+        
         for i, ds in enumerate(self.datasets):
-            chi2+=ds.chi2(ims=images[:ds.nchans], dxy=dxy, disk=disk, PA=PA, dRA=dRA, dDec=dDec)
-            images = images[ds.nchans:]
+            chi2+=ds.chi2(ims=[images[0]], dxy=dxy, disk=disk, PA=PA, dRA=dRA, dDec=dDec, F_star=F_star)
+            images = images[1:]
         return chi2
 
 
@@ -64,6 +68,7 @@ class UVData:
         self.filetype=filetype
 
         if filetype == 'txt':
+            '''
             self.u = []
             self.v = []
             
@@ -72,6 +77,9 @@ class UVData:
 
             self.w = []
             data = np.loadtxt(f)
+            '''
+            self.u, self.v, self.real, self.imag, self.w, self.lams = np.require(np.loadtxt(f, unpack=True), requirements='C')
+            '''
             chans, index = np.unique(data[:, 5],return_index=True)
             self.chans = chans[index.argsort()]
 
@@ -88,6 +96,8 @@ class UVData:
                 self.w.append(dat[:, 4])
 
             self.chans *= 100
+            '''
+            self.chans  = np.unique(self.lams)[0]
 
         if filetype == 'fits':
             data = fits.open(f)[0]
@@ -113,80 +123,48 @@ class UVData:
         self._mrs()
         self._resolution()
 
-        self.nchans = len(self.chans)
+        #self.nchans = len(self.chans)
 
     def _mrs(self):
-        self.mrs = np.empty(len(self.u))
-        for i, (u, v) in enumerate(zip(self.u, self.v)):
-            self.mrs[i] = find_mrs(u, v)
+        self.mrs = find_mrs(self.u, self.v)
+        #self.mrs = np.empty(len(self.u))
+        #for i, (u, v) in enumerate(zip(self.u, self.v)):
+        #    self.mrs[i] = find_mrs(u, v)
 
     def _resolution(self):
-        self.resolution = np.empty(len(self.u))
-        for i, (u, v) in enumerate(zip(self.u, self.v)):
-            self.resolution[i] = find_resolution(u, v)
+        self.resolution = find_resolution(self.u, self.v)
+        #self.resolution = np.empty(len(self.u))
+        #for i, (u, v) in enumerate(zip(self.u, self.v)):
+        #    self.resolution[i] = find_resolution(u, v)
     
-    def sample(self, ims=None, disk=None, modout='mod.txt', residout=None, PA=0.,
-            dRA=0., dDec=0.):
-
-        if self.filetype == 'txt':
-            model_vis = np.empty((np.sum(len(u) for u in self.u), 6))
-        if self.filetype == 'fits':
-            model_vis = self.data[0].data['data'].copy()
-
-        PA *= np.pi/180
+    def sample(self, ims=None, dxy=None, disk=None, modout='mod', PA=0., dRA=0., dDec=0., F_star=0, imchecked=False):
+        PA *= np.pi /180
         dRA *= np.pi /(180*3600)
         dDec *= np.pi/(180*3600)
+        gd.threads(num=1)
+        Vstar=F_star*np.exp(2*np.pi*1j*(self.u*dRA +self.v*dDec))
 
-        if ims==None:
-            ims=disk.ims
-        if self.filetype == 'txt':
-            assert len(ims) == len(self.re)
-        if self.filetype == 'fits':
-            pass
-            # assert len(ims) == np.shape(self.re)[0]
-        start_loc = 0
-        
-        
         for i, im in enumerate(ims):
-            val, dxy = prepare_image(im, self.mrs[i], self.chans[i])
-            
-            ims[i].val = val
-
-            gd.threads(num=1)
-
-            vis = gd.sampleImage(val,
-                    dxy,
-                    self.u[i].copy(order='C'), 
-                    self.v[i].copy(order='C'), 
-                    PA=(np.pi/2+PA),
-                    dRA=dRA,
-                    dDec=dDec)
-
-            end_loc = start_loc + len(vis.real)
-
+            val, dxy = prepare_image(im, self.mrs, self.chans)
+        
             if self.filetype=='txt':
-                mod = [self.u[i], self.v[i], vis.real, vis.imag, self.w[i], [self.chans[i]/100]*len(vis.real)]
-                model_vis[start_loc:end_loc] = np.array(mod).T
+                Vmodel = gd.sampleImage(val,
+                                    dxy,
+                                    self.u, self.v,
+                                    dRA=dRA,
+                                    dDec=dRA,
+                                    PA=PA+np.pi/2.0,
+                                    origin='lower')
+                # add star in visibility space
+                Vmodel=Vmodel+Vstar
 
-                start_loc = end_loc
+                np.savetxt('./'+'{}.txt'.format(modout),
+                           np.column_stack([self.u, self.v, Vmodel.real, Vmodel.imag, self.w, self.lams]),
+                           fmt='%10.6e', delimiter='\t',
+                           header='Model {}.\nwavelength[m] = {}\nColumns:\tu[lambda]\tv[lambda]\tRe(V)[Jy]\tIm(V)[Jy]\tweight\tlambda[m]'.format(modout, np.mean(self.lams)))
 
-            if self.filetype=='fits':
-                model_vis[:, 0, 0, i, 0, 0, 0] = vis.real
-                model_vis[:, 0, 0, i, 0, 1, 0] = vis.real
-                
-                model_vis[:, 0, 0, i, 0, 0, 1] = vis.imag
-                model_vis[:, 0, 0, i, 0, 1, 1] = vis.imag
 
-        if self.filetype=='txt':
-            np.savetxt(modout, model_vis)
-
-        if self.filetype=='fits': 
-            model = self.data.copy()
-            model[0].data['data'] = model_vis
-            model.writeto(modout, overwrite=True)
-            model.close()
-
-    def chi2(self, ims=None, dxy=None, disk=None, PA=0., dRA=0., dDec=0., imchecked=False):
+    def chi2(self, ims=None, dxy=None, disk=None, PA=0., dRA=0., dDec=0., F_star=0, imchecked=False):
         chi2 = 0
         PA *= np.pi /180
         dRA *= np.pi /(180*3600)
@@ -197,16 +175,18 @@ class UVData:
             ims = disk.ims
 
         gd.threads(num=1)
+        Vstar=F_star*np.exp(2*np.pi*1j*(self.u*dRA +self.v*dDec))
+        
         for i, im in enumerate(ims):
-            val, dxy = prepare_image(im, self.mrs[i], self.chans[i])
+            val, dxy = prepare_image(im, self.mrs, self.chans)
             if self.filetype=='txt':
                 chi2 += gd.chi2Image(val, 
                                      dxy, 
-                                     self.u[i].copy(order='C'), 
-                                     self.v[i].copy(order='C'), 
-                                     self.re[i].copy(order='C'), 
-                                     self.im[i].copy(order='C'), 
-                                     self.w[i].copy(order='C'), 
+                                     self.u, 
+                                     self.v, 
+                                     self.real-Vstar.real,
+                                     self.imag-Vstar.imag,
+                                     self.w, 
                                      PA=(np.pi/2+PA),
                                      dRA=dRA,
                                      dDec=dDec)
