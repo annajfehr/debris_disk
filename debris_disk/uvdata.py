@@ -152,7 +152,7 @@ class UVData:
                                     dxy,
                                     self.u, self.v,
                                     dRA=dRA,
-                                    dDec=dRA,
+                                    dDec=dDec,
                                     PA=PA+np.pi/2.0,
                                     origin='lower')
                 # add star in visibility space
@@ -225,11 +225,10 @@ class UVData:
 
 def prepare_image(im, mrs, nu):
     dxy = im.imres * np.pi /(180*3600) 
-
+    
     im.square()
     #im.beam_corr(nu, 12)
     val = im.val[::-1,:].copy(order='C')
-
     min_pixels = int(2 * mrs / dxy)+1
 
     if min_pixels % 2 != 0:
@@ -318,11 +317,13 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_
                             dpix_rad,
                             u, v,
                             dRA=dRA,
-                            dDec=dRA,
+                            dDec=dDec,
                             PA=PA+np.pi/2.0,
                             origin='lower')
         # add star in visibility space
-        Vmodel=Vmodel+Vstar
+        Vmodel.real+=Vstar.real
+        Vmodel.imag+=Vstar.imag
+        #Vmodel=Vmodel+Vstar
 
         np.savetxt('./'+'model_{}.txt'.format(fileout),
                    np.column_stack([u, v, Vmodel.real, Vmodel.imag, w, lams]),
