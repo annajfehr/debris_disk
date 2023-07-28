@@ -98,6 +98,7 @@ class UVData:
             self.chans *= 100
             '''
             self.chans  = np.unique(self.lams)[0]
+            self.chans *= 100
 
         if filetype == 'fits':
             data = fits.open(f)[0]
