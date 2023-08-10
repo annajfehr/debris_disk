@@ -196,17 +196,29 @@ class Disk:
         if obs and calc_image:
             self._im(obs) # Integrate to find image intensities
 
-    def rp_convert(self, params):
-        if self.radial_func == 'gaussian':
-            return profiles.gaussian.conversion(params, const.AU)
-        if self.radial_func == 'powerlaw':
-            return profiles.powerlaw.conversion(params, const.AU)
-        if self.radial_func == 'powerlaw_errf':
-            return profiles.powerlaw_errf.conversion(params, const.AU)
-        if self.radial_func == 'double_powerlaw':
-            return profiles.double_powerlaw.conversion(params, const.AU)
-        if self.radial_func == 'triple_powerlaw':
-            return profiles.triple_powerlaw.conversion(params, const.AU)
+    def rp_convert(self, radial_params):
+        def convert_func(func, params):
+            if func == 'gaussian':
+                return profiles.gaussian.conversion(params, const.AU)
+            if func == 'powerlaw':
+                return profiles.powerlaw.conversion(params, const.AU)
+            if func == 'powerlaw_errf':
+                return profiles.powerlaw_errf.conversion(params, const.AU)
+            if func == 'double_powerlaw':
+                return profiles.double_powerlaw.conversion(params, const.AU)
+            if func == 'triple_powerlaw':
+                return profiles.triple_powerlaw.conversion(params, const.AU)
+            if func == 'single_erf':
+                return profiles.single_erf.conversion(params, const.AU)
+            if func == 'asymmetric_gaussian':
+                return profiles.asymmetric_gaussian.conversion(params, const.AU)
+
+        if type(self.radial_func) is list:
+            for i, func in enumerate(self.radial_func):
+                radial_params[i] = convert_func(func, radial_params[i].copy())
+            return radial_params
+        else:
+            return convert_func(self.radial_func, radial_params)
 
     def vp_convert(self, vert_params):
         vert_params['Hc'] *= const.AU
@@ -382,10 +394,20 @@ class Disk:
         else:
             val = profile_from_func(self.radial_func, self.radial_params)
 
-        if self.gap:
-            gap_params = profiles.gaussian.conversion(self.gap_params, const.AU)
+        def make_gap(params):
+            gap_params = profiles.gaussian.conversion(params, const.AU)
             gap = 1-(gap_params.pop('depth') * \
                     profiles.gaussian.val(rr, **gap_params))
+            return gap
+
+        if self.gap:
+            if type(self.gap_params) is list:
+                gap = np.zeros(np.shape(val))
+                for params in self.gap_params:
+                    gap += make_gap(params.copy())
+                gap -= (len(self.gap_params) - 1)
+            else:
+                gap = make_gap(self.gap_params.copy())
             val*=gap
             self.g = gap
 
