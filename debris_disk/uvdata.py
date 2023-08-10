@@ -68,35 +68,8 @@ class UVData:
         self.filetype=filetype
 
         if filetype == 'txt':
-            '''
-            self.u = []
-            self.v = []
-            
-            self.re = []
-            self.im = []
-
-            self.w = []
-            data = np.loadtxt(f)
-            '''
             self.u, self.v, self.real, self.imag, self.w, self.lams = np.require(np.loadtxt(f, unpack=True), requirements='C')
-            '''
-            chans, index = np.unique(data[:, 5],return_index=True)
-            self.chans = chans[index.argsort()]
-
-            for chan in self.chans:
-                indices = (data[:,5] == chan)
-                dat = data[indices]
-
-                self.u.append(dat[:, 0])
-                self.v.append(dat[:, 1])
-
-                self.re.append(dat[:, 2])
-                self.im.append(dat[:, 3])
-
-                self.w.append(dat[:, 4])
-
-            self.chans *= 100
-            '''
+            
             self.chans  = np.unique(self.lams)[0]
             self.chans *= 100
 
@@ -181,6 +154,7 @@ class UVData:
         for i, im in enumerate(ims):
             val, dxy = prepare_image(im, self.mrs, self.chans)
             if self.filetype=='txt':
+                print('Image total = ', np.sum(val))
                 chi2 += gd.chi2Image(val, 
                                      dxy, 
                                      self.u, 
@@ -303,7 +277,6 @@ def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star
             return txt_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, F_star, residual)
 
 def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False):
-    # load image and header
     image=modfile[0].data.astype('double') # important for Galario sometimes
     dpix_deg=modfile[0].header['CDELT2']
     dpix_rad=dpix_deg*np.pi/180.
@@ -313,6 +286,7 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_
     image = prepare_val(image, dpix_rad, mrs, 3.3e11)
     Vstar=F_star*np.exp(2*np.pi*1j*(u*dRA +v*dDec))
 
+    print('Image total = ', np.sum(image))
     if fileout:
         Vmodel = gd.sampleImage(image,
                             dpix_rad,

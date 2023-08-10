@@ -99,6 +99,44 @@ class triple_powerlaw:
         params['Rout'] *= unit
         return params
 
+class single_erf:
+    def val(r, Rc, sigma_in, alpha_out):
+        inner_edge = 1-erf((Rc-r)/(np.sqrt(2)*sigma_in*Rc))
+        return inner_edge * (r/Rc)**-alpha_out
+
+    def limits(Rc, sigma_in, alpha_out):
+        return [0, np.inf] #filler, will use [resolution/2, Rmax)
+
+    def conversion(params, unit):
+        params['Rc'] *= unit
+
+class asymmetric_gaussian:
+    def val(r, Rc, sigma_in, sigma_out):
+        return np.piecewise(r, [r < Rc, r >= Rc], [lambda r : gaussian.val(r, sigma_in, Rc), lambda r : gaussian.val(r, sigma_out, Rc)])
+
+    def limits(Rc, sigma_in, sigma_out):
+        return [0, np.inf] #filler, will use [resolution/2, Rmax)
+    
+    def conversion(params, unit):
+        params['Rc'] *= unit
+        params['sigma_in'] *= unit
+        params['sigma_out'] *= unit
+        
+class triple_gaussian:
+    def val(r, R1, R2, R3, h2, h3, sigma_1, sigma_2, sigma_3):
+        return gaussian.val(r, sigma_1, R1) + h2*gaussian.val(r, sigma_2, R2) + h3*gaussian.val(r, sigma_3, R3)
+
+    def limits(R1, R2, R3, h2, h3, sigma_1, sigma_2, sigma_3):
+        return [0, np.inf] #filler, will use [resolution/2, Rmax)
+    
+    def conversion(params, unit):
+        params['R1'] *= unit
+        params['R2'] *= unit
+        params['R3'] *= unit
+        params['sigma_1'] *= unit
+        params['sigma_2'] *= unit
+        params['sigma_3'] *= unit
+
 class constant:
     def val(x, c):
         return c * x / x
