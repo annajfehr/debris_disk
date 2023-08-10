@@ -139,13 +139,13 @@ class linear:
         return slope*(Rout**2-Rin**2)/2
 
 class gaussian:
-    def val(x, sigma, R=0):
-        return np.exp(-((x-R)**2/(2*sigma**2)))
+    def val(x, sigma, R=0, gamma=2):
+        return np.exp(-((x-R)**gamma/(2*sigma**gamma)))
     
-    def norm(sigma, R=0):
+    def norm(sigma, R=0, gamma=2):
         return sigma * np.sqrt(2*np.pi)
     
-    def limits(sigma, R=0):
+    def limits(sigma, R=0, gamma=2):
         fac = 2.628 # 99.9 percentile
         rmin = max(0, R - sigma * fac)
         rmax = R + sigma * fac

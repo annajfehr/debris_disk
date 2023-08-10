@@ -243,22 +243,16 @@ class Disk:
         # grid, in all other cases use uniform sampling
         self.r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
  
-        # Calculates scale heightm as a function of r
-        H, Hnorm = self.H(**self.vert_params)
+        # Calculates scale height as a function of r
+        vert_struct = self.H(**self.vert_params)
 
-        self._zmax(H) # Find vertical extent
+        self._zmax(vert_struct[0]) # Find vertical extent
         self.nz = int(5 * self.zmax / self.modres) # 5x final image resolution
 
-        # print('Rbounds = ', self.rbounds)
-        # print(self.nr, self.nz)
-        if self.nr * self.nr * self.nz > 2e9/15:
-            #     return False
-            pass
-    
         self.z = np.linspace(0, self.zmax, self.nz)
         
         rr, zz = np.meshgrid(self.r, self.z)
-        assert self._rho2d(rr, zz, H, Hnorm)  # create 2d disk density structure
+        assert self._rho2d(rr, zz, vert_struct)  # create 2d disk density structure
         assert self._T2d(rr, zz) # Calculate 2d temperature array
         return True
 
@@ -272,7 +266,7 @@ class Disk:
         """
         self.rbounds =  [self.modres/2, self.max_r]
  
-    def H(self, Hc, Rc, psi):
+    def H(self, Hc, Rc, psi, gamma=2):
         """
         Determine scale height values
 
@@ -294,7 +288,7 @@ class Disk:
         self.Harr = H
         Hnorm = (Hc / (psi+1)) * ((self.rbounds[1] / Rc)**(psi+1) - \
                 (self.rbounds[0] / Rc)**(psi+1))
-        return H, Hnorm
+        return H, Hnorm, gamma
     
     def _zmax(self, H):
         """
@@ -319,7 +313,7 @@ class Disk:
         if self.zmax < self.modres:
             self.zmax = self.modres/2
 
-    def _rho2d(self, rr, zz, H, Hnorm):
+    def _rho2d(self, rr, zz, vert_struct):
         """
         Initialize self.rho2d, a nr x nz matrix where self.rho2d[i, j] is the
         surface density of the disk (g/cm^2) at the location described by
@@ -342,7 +336,7 @@ class Disk:
         """
         
         # Radial x vertical density structure
-        self.rho2d = self.sigma(rr) * self.vert(zz, H, Hnorm) 
+        self.rho2d = self.sigma(rr) * self.vert(zz, *vert_struct) 
         np.nan_to_num(self.rho2d, nan=1e-60) # Check for nans
         return True
 
@@ -414,7 +408,7 @@ class Disk:
         self.sigma= self.sigma_crit * val
         return self.sigma_crit * val
 
-    def vert(self, zz, H, Hnorm):
+    def vert(self, zz, H, Hnorm, gamma=2):
         """
         Produce vertical density structure 
 
