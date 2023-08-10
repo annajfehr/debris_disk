@@ -154,7 +154,6 @@ class UVData:
         for i, im in enumerate(ims):
             val, dxy = prepare_image(im, self.mrs, self.chans)
             if self.filetype=='txt':
-                print('Image total = ', np.sum(val))
                 chi2 += gd.chi2Image(val, 
                                      dxy, 
                                      self.u, 
@@ -286,7 +285,6 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_
     image = prepare_val(image, dpix_rad, mrs, 3.3e11)
     Vstar=F_star*np.exp(2*np.pi*1j*(u*dRA +v*dDec))
 
-    print('Image total = ', np.sum(image))
     if fileout:
         Vmodel = gd.sampleImage(image,
                             dpix_rad,
