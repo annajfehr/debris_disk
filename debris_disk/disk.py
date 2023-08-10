@@ -258,31 +258,7 @@ class Disk:
         -------
         None
         """
-
-        if self.radial_func == 'gaussian':
-            self.rbounds = profiles.gaussian.limits(**self.radial_params)
-        
-        if self.radial_func == 'powerlaw':
-            self.rbounds = profiles.powerlaw.limits(**self.radial_params)
-
-        if self.radial_func == 'powerlaw_errf':
-            self.rbounds = profiles.powerlaw_errf.limits(**self.radial_params)
-        
-        if self.radial_func == 'double_powerlaw':
-            self.rbounds = profiles.double_powerlaw.limits(**self.radial_params)
-
-        if self.radial_func == 'triple_powerlaw':
-            self.rbounds = profiles.triple_powerlaw.limits(**self.radial_params)
-        
-        self.rbounds[1] = min(self.rbounds[1], self.max_r)
-        if self.rbounds[0] < self.modres:
-            self.rbounds[0] = self.modres/2
-        if self.rbounds[1] < self.modres:
-            self.rbounds[1] = 5.0*self.modres
-        #if self.rbounds[1]<self.rbounds[0]:
-        #    self.rbounds[1] = 5.0*self.modres
-        assert (self.rbounds[0]>=0), "Cannot find bounds from functional form, rmin<0"
-        assert (self.rbounds[1]>self.rbounds[0]), "Cannot find bounds from functional form, rmin>rmax"
+        self.rbounds =  [self.modres/2, self.max_r]
  
     def H(self, Hc, Rc, psi):
         """
@@ -373,20 +349,38 @@ class Disk:
         self.r[i]
         """
 
-        if self.radial_func == 'powerlaw':
-            val = profiles.powerlaw.val(rr, **self.radial_params)
-        
-        if self.radial_func == 'powerlaw_errf':
-            val = profiles.powerlaw_errf.val(rr, **self.radial_params)
+        def profile_from_func(radial_func, params):
+            if radial_func == 'powerlaw':
+                return profiles.powerlaw.val(rr, **params)
+            
+            if radial_func == 'powerlaw_errf':
+                return profiles.powerlaw_errf.val(rr, **params)
 
-        if self.radial_func == 'double_powerlaw':
-            val = profiles.double_powerlaw.val(rr, **self.radial_params)
-        
-        if self.radial_func == 'triple_powerlaw':
-            val = profiles.triple_powerlaw.val(rr, **self.radial_params)
+            if radial_func == 'double_powerlaw':
+                return profiles.double_powerlaw.val(rr, **params)
+            
+            if radial_func == 'triple_powerlaw':
+                return profiles.triple_powerlaw.val(rr, **params)
 
-        if self.radial_func == 'gaussian':
-            val = profiles.gaussian.val(rr, **self.radial_params)
+            if radial_func == 'gaussian':
+                return profiles.gaussian.val(rr, **params)
+            
+            if radial_func == 'single_erf':
+                return profiles.single_erf.val(rr, **params)
+            
+            if radial_func == 'asymmetric_gaussian':
+                return profiles.asymmetric_gaussian.val(rr, **params)
+
+        if type(self.radial_func) == list:
+            val = np.zeros(np.shape(rr))
+            for func, params in zip(self.radial_func, self.radial_params):
+                try:
+                    norm = params.pop('norm')
+                except:
+                    norm = 1
+                val += norm * profile_from_func(func, params)
+        else:
+            val = profile_from_func(self.radial_func, self.radial_params)
 
         if self.gap:
             gap_params = profiles.gaussian.conversion(self.gap_params, const.AU)

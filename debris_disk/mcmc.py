@@ -215,6 +215,9 @@ class MCMC:
                                         verbose], 
                                   pool=pool)
 
+        if os.path.exists(outfile):
+            restart=outfile
+
         if restart:
             steps = np.loadtxt(restart)
             init_pos = np.array([steps[-(nwalkers-i+1)] for i in range(nwalkers)])[:,:-1]
