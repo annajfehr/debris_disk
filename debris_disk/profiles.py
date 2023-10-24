@@ -4,8 +4,8 @@ from scipy.optimize import fsolve
 
 class powerlaw:
     def val(r, alpha, Rin, Rout, lin=0.01, lout=0.01):
-        return (r/Rin)**alpha * (1+np.tanh((r-Rin)/lin)) * \
-                (1+np.tanh((Rout-r)/lout))/4
+        return (r/Rin)**alpha * (1+erf((r-Rin)/lin)) * \
+                (1+erf((Rout-r)/lout))/4
     
     def limits(alpha, Rin, Rout, lin=0.01, lout=0.01):
         fac = 3.451 *1.496e13 # 99.99 percentile
@@ -43,9 +43,9 @@ class double_powerlaw:
         value = ((r/rc)**(-alpha_in*gamma) + \
                 (r/rc)**(-alpha_out*gamma))**(-1/gamma)
         if Rin:
-            value *= (1+np.tanh((r-Rin)/lin))
+            value *= (1+erf((r-Rin)/lin))
         if Rout:
-            value *= (1+np.tanh((Rout-r)/lout))
+            value *= (1+erf((Rout-r)/lout))
 
         return value
     
