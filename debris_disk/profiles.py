@@ -16,6 +16,10 @@ class powerlaw:
     def conversion(params, unit):
         params['Rin'] *= unit
         params['Rout'] *= unit
+        if params.get('lin'):
+            params['lin'] *= unit
+        if params.get('lout'):
+            params['lout'] *= unit
         return params
 
 class powerlaw_errf:
@@ -61,8 +65,8 @@ class double_powerlaw:
         else:
             rmin = 0
 
-        max_val = rc * double_powerlaw.val(rc, rc, alpha_in, alpha_out, gamma)
-        f = lambda x : (x * double_powerlaw.val(x, rc, alpha_in, alpha_out, gamma)) - max_val * 0.1
+        max_val = rc * double_powerlaw.val(rc, rc, alpha_in, alpha_out, gamma, Rin, Rout, lin, lout)
+        f = lambda x : (x * double_powerlaw.val(x, rc, alpha_in, alpha_out, gamma, Rin, Rout, lin, lout)) - max_val * 0.1
         Rmax = fsolve(f, rc*3)[0]
         if Rmax < rc:
             Rmax = rmax
@@ -75,8 +79,12 @@ class double_powerlaw:
         params['rc'] *= unit
         if params.get('Rin'):
             params['Rin'] *= unit
+        if params.get('lin'):
+            params['lin'] *= unit
         if params.get('Rout'):
             params['Rout'] *= unit
+        if params.get('lout'):
+            params['lout'] *= unit
         return params
 
 class triple_powerlaw:
