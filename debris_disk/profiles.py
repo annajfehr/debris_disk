@@ -4,8 +4,8 @@ from scipy.optimize import fsolve
 
 class powerlaw:
     def val(r, alpha, Rin, Rout, lin=0.01, lout=0.01):
-        return (r/Rin)**alpha * (1+np.tanh((r-Rin)/lin)) * \
-                (1+np.tanh((Rout-r)/lout))/4
+        return (r/Rin)**alpha * (1+erf((r-Rin)/lin)) * \
+                (1+erf((Rout-r)/lout))/4
     
     def limits(alpha, Rin, Rout, lin=0.01, lout=0.01):
         fac = 3.451 *1.496e13 # 99.99 percentile
@@ -16,6 +16,10 @@ class powerlaw:
     def conversion(params, unit):
         params['Rin'] *= unit
         params['Rout'] *= unit
+        if params.get('lin'):
+            params['lin'] *= unit
+        if params.get('lout'):
+            params['lout'] *= unit
         return params
 
 class powerlaw_errf:
@@ -43,9 +47,9 @@ class double_powerlaw:
         value = ((r/rc)**(-alpha_in*gamma) + \
                 (r/rc)**(-alpha_out*gamma))**(-1/gamma)
         if Rin:
-            value *= (1+np.tanh((r-Rin)/lin))
+            value *= (1+erf((r-Rin)/lin))
         if Rout:
-            value *= (1+np.tanh((Rout-r)/lout))
+            value *= (1+erf((Rout-r)/lout))
 
         return value
     
@@ -61,8 +65,8 @@ class double_powerlaw:
         else:
             rmin = 0
 
-        max_val = rc * double_powerlaw.val(rc, rc, alpha_in, alpha_out, gamma)
-        f = lambda x : (x * double_powerlaw.val(x, rc, alpha_in, alpha_out, gamma)) - max_val * 0.1
+        max_val = rc * double_powerlaw.val(rc, rc, alpha_in, alpha_out, gamma, Rin, Rout, lin, lout)
+        f = lambda x : (x * double_powerlaw.val(x, rc, alpha_in, alpha_out, gamma, Rin, Rout, lin, lout)) - max_val * 0.1
         Rmax = fsolve(f, rc*3)[0]
         if Rmax < rc:
             Rmax = rmax
@@ -75,8 +79,12 @@ class double_powerlaw:
         params['rc'] *= unit
         if params.get('Rin'):
             params['Rin'] *= unit
+        if params.get('lin'):
+            params['lin'] *= unit
         if params.get('Rout'):
             params['Rout'] *= unit
+        if params.get('lout'):
+            params['lout'] *= unit
         return params
 
 class triple_powerlaw:
