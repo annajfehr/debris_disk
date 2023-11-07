@@ -131,6 +131,108 @@ class asymmetric_gaussian:
         params['sigma_in'] *= unit
         params['sigma_out'] *= unit
         return params
+    
+class gauss_dpl: # gaussian and simple double power law
+    def val(r, sigma, R_gauss, rc, alpha_in, alpha_out, gamma=2):
+        gauss = gaussian.val(r, sigma, R_gauss)
+        dpl = double_powerlaw.val(r, rc, alpha_in, alpha_out, gamma)
+        return gauss+dpl
+
+    def limits(sigma, R_gauss, rc, alpha_in, alpha_out, gamma=2):
+        # gaussian
+        fac = 2.628 # 99.9 percentile
+        rmin_gauss = max(0, R_gauss - sigma * fac)
+        rmax_gauss = R_gauss + sigma * fac
+        # double power law
+        assert alpha_in > 0, "alpha_in must be positive to find inner edge"
+        assert alpha_out < 0, "alpha_out must be negative to find outer edge"
+        rmax_dpl = rc + 5.28e15 + 2.94*(alpha_out**2) + 58.5*alpha_out
+        rmin_dpl = 0
+        max_val = rc * double_powerlaw.val(rc, rc, alpha_in, alpha_out, gamma)
+        f = lambda x : (x * double_powerlaw.val(x, rc, alpha_in, alpha_out, gamma)) - max_val * 0.1
+        Rmax = fsolve(f, rc*3)[0]
+        if Rmax < rc:
+            Rmax = rmax_dpl
+        if Rmax < rmin_dpl:
+            Rmax = 3.0*np.abs(rc)
+            rmin_dpl = 0
+        return [min(rmin_gauss, rmin_dpl), max(rmax_gauss, Rmax)]
+    
+    def conversion(params, unit):
+        params['R_gauss'] *= unit
+        params['sigma'] *= unit
+        params['rc'] *= unit
+        return params
+
+class double_gaussian:
+    def val(r, R1, R2, sigma1, sigma2, C1=1.0, C2=1.0):
+        gauss1 = gaussian.val(r, sigma1, R1)
+        gauss2 = gaussian.val(r, sigma2, R2)
+        return C1*gauss1+C2*gauss2
+    
+    def limits(R1, R2, sigma1, sigma2, C1=1.0, C2=1.0):
+        fac = 2.628 # 99.9 percentile
+        rmax = max(R1 + sigma1 * fac, R2 + sigma2 * fac)
+        return [0, rmax]
+    
+    def conversion(params, unit):
+        params['R1'] *= unit
+        params['sigma1'] *= unit
+        params['R2'] *= unit
+        params['sigma2'] *= unit
+        return params    
+    
+class triple_gaussian:
+    def val(r, R1, R2, R3, sigma1, sigma2, sigma3, C1=1.0, C2=1.0, C3=1.0):
+        gauss1 = gaussian.val(r, sigma1, R1)
+        gauss2 = gaussian.val(r, sigma2, R2)
+        gauss3 = gaussian.val(r, sigma3, R3)
+        return C1*gauss1+C2*gauss2+C3*gauss3
+    
+    def limits(R1, R2, R3, sigma1, sigma2, sigma3, C1=1.0, C2=1.0, C3=1.0):
+        fac = 2.628 # 99.9 percentile
+        rmax = max(R1 + sigma1 * fac, R2 + sigma2 * fac, R3 + sigma3 * fac)
+        return [0, rmax]
+    
+    def conversion(params, unit):
+        params['R1'] *= unit
+        params['sigma1'] *= unit
+        params['R2'] *= unit
+        params['sigma2'] *= unit
+        params['R3'] *= unit
+        params['sigma3'] *= unit
+        return params
+    
+class dpl_2gaussgaps:
+    def val(r, rc, alpha_in, alpha_out, gamma, R1, R2, sigma1, sigma2, C1=0.5, C2=0.5):
+        dpl = double_powerlaw.val(r, rc, alpha_in, alpha_out, gamma)
+        gap1 = gaussian.val(r, sigma1, R1)
+        gap2 = gaussian.val(r, sigma2, R2)
+        return dpl-C1*gap1-C2*gap2
+    
+    def limits(rc, alpha_in, alpha_out, gamma, R1, R2, sigma1, sigma2, C1=0.5, C2=0.5):
+        assert alpha_in > 0, "alpha_in must be positive to find inner edge"
+        assert alpha_out < 0, "alpha_out must be negative to find outer edge"
+        rmax = rc + 5.28e15 + 2.94*(alpha_out**2) + 58.5*alpha_out
+        
+        fac = 3.451 # 99.9 percentile
+
+        max_val = rc * double_powerlaw.val(rc, rc, alpha_in, alpha_out, gamma)
+        f = lambda x : (x * double_powerlaw.val(x, rc, alpha_in, alpha_out, gamma)) - max_val * 0.1
+        Rmax = fsolve(f, rc*3)[0]
+        if Rmax < rc:
+            Rmax = rmax
+        if Rmax < 0:
+            Rmax = 3.0*np.abs(rc)
+        return [0, Rmax]
+    
+    def conversion(params, unit):
+        params['rc'] *= unit
+        params['R1'] *= unit
+        params['sigma1'] *= unit
+        params['R2'] *= unit
+        params['sigma2'] *= unit
+        return params
 
 class constant:
     def val(x, c):
