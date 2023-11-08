@@ -133,12 +133,12 @@ class asymmetric_gaussian:
         return params
     
 class gauss_dpl: # gaussian and simple double power law
-    def val(r, sigma, R_gauss, rc, alpha_in, alpha_out, gamma=2):
+    def val(r, sigma, R_gauss, rc, alpha_in, alpha_out, gamma=2, C1=1.0, C2=1.0):
         gauss = gaussian.val(r, sigma, R_gauss)
         dpl = double_powerlaw.val(r, rc, alpha_in, alpha_out, gamma)
-        return gauss+dpl
+        return C1*gauss+C2*dpl
 
-    def limits(sigma, R_gauss, rc, alpha_in, alpha_out, gamma=2):
+    def limits(sigma, R_gauss, rc, alpha_in, alpha_out, gamma=2, C1=1.0, C2=1.0):
         # gaussian
         fac = 2.628 # 99.9 percentile
         rmin_gauss = max(0, R_gauss - sigma * fac)
