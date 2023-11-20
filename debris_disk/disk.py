@@ -212,6 +212,14 @@ class Disk:
                 return profiles.single_erf.conversion(params, const.AU)
             if func == 'asymmetric_gaussian':
                 return profiles.asymmetric_gaussian.conversion(params, const.AU)
+            if func == 'gauss_dpl':
+                return profiles.gauss_dpl.conversion(params, const.AU)
+            if func == 'double_gaussian':
+                return profiles.double_gaussian.conversion(params, const.AU)
+            if func == 'triple_gaussian':
+                return profiles.triple_gaussian.conversion(params, const.AU)
+            if func == 'dpl_2gaussgaps':
+                return profiles.dpl_2gaussgaps.conversion(params, const.AU)
 
         if type(self.radial_func) is list:
             for i, func in enumerate(self.radial_func):
@@ -376,6 +384,18 @@ class Disk:
             
             if radial_func == 'asymmetric_gaussian':
                 return profiles.asymmetric_gaussian.val(rr, **params)
+            
+            if radial_func == 'gauss_dpl':
+                return profiles.gauss_dpl.val(rr, **params)
+            
+            if radial_func == 'double_gaussian':
+                return profiles.double_gaussian.val(rr, **params)
+            
+            if radial_func == 'triple_gaussian':
+                return profiles.triple_gaussian.val(rr, **params)
+            
+            if radial_func == 'dpl_2gaussgaps':
+                return profiles.dpl_2gaussgaps.val(rr, **params)
 
         if type(self.radial_func) == list:
             val = np.zeros(np.shape(rr))
