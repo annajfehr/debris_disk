@@ -191,11 +191,11 @@ class Disk:
                 return
             if not self.incline(): # Produce 3d sky plane density
                 return
-        
+            
         self.mod = True
         if obs and calc_image:
-            self._im(obs) # Integrate to find image intensities
-
+            self._im(obs) # Integrate to find image
+    
     def rp_convert(self, radial_params):
         def convert_func(func, params):
             if func == 'gaussian':
@@ -236,7 +236,7 @@ class Disk:
     def structure2d(self):
         """
         Initialize density and temperature structures
-        """
+        """#debug note: this function is running
         if self.rbounds:
             self.rbounds[0] *= const.AU
             self.rbounds[1] *= const.AU
@@ -487,7 +487,7 @@ class Disk:
         -------
         None
         """
-        
+
         cosinc = np.cos(self.inc)
         sininc = np.sin(self.inc) 
 
@@ -507,6 +507,7 @@ class Disk:
         nS = int(6 * Slim / self.modres)
         
         if self.nX * self. nY * nS * 8 * 5 > self.max_mem: # 8 bits/float, 5 copies of the array    
+            print("Required memory exceeds available memory")
             return False
 
         X = np.linspace(-Xlim, Xlim, self.nX)
@@ -531,7 +532,7 @@ class Disk:
         slope = (self.nz-1)/(self.zmax)
         zind = slope * np.abs(tz)
         del tz
-        
+
         self.T=ndimage.map_coordinates(self.T2d,[[zind],[rind]],order=5).reshape(self.nY,self.nX, nS) 
         self.T[self.T<=0] = np.min(self.T2d)
         self.rho=ndimage.map_coordinates(self.rho2d,[[zind],[rind]],order=5).reshape(self.nY, self.nX, nS)  
