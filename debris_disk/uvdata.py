@@ -46,15 +46,15 @@ class UVDataset:
 
         if not disk.mod:
             return np.inf
-
+        
         chi2=0
 
         images = disk.ims
-
         
-        for i, ds in enumerate(self.datasets):
-            chi2+=ds.chi2(ims=[images[0]], dxy=dxy, disk=disk, PA=PA, dRA=dRA, dDec=dDec, F_star=F_star)
-            images = images[1:]
+
+        for i, ds in enumerate(self.datasets): # so ds is a single UVData object
+            chi2+=ds.chi2(ims=[images[i]], dxy=dxy, disk=disk, PA=PA, dRA=dRA, dDec=dDec, F_star=F_star)
+            #images = images[1:] # okay either have this line and images[0], or omit this line and have images[i]
         return chi2
 
 
@@ -112,26 +112,26 @@ class UVData:
         #    self.resolution[i] = find_resolution(u, v)
     
     def sample(self, ims=None, dxy=None, disk=None, modout='mod', PA=0., dRA=0., dDec=0., F_star=0, imchecked=False):
-        PA *= np.pi /180
-        dRA *= np.pi /(180*3600)
-        dDec *= np.pi/(180*3600)
+        PA *= np.pi /180 # PA is now in RADIANS!
+        dRA *= np.pi /(180*3600) 
+        dDec *= np.pi/(180*3600) 
         gd.threads(num=1)
         Vstar=F_star*np.exp(2*np.pi*1j*(self.u*dRA +self.v*dDec))
 
         for i, im in enumerate(ims):
             val, dxy = prepare_image(im, self.mrs, self.chans)
-        
+            
             if self.filetype=='txt':
                 Vmodel = gd.sampleImage(val,
                                     dxy,
                                     self.u, self.v,
-                                    dRA=dRA,
-                                    dDec=dDec,
+                                    dRA=dRA, 
+                                    dDec=dDec, 
                                     PA=PA+np.pi/2.0,
                                     origin='lower')
                 # add star in visibility space
                 Vmodel=Vmodel+Vstar
-
+                print("saving model!")
                 np.savetxt('./'+'{}.txt'.format(modout),
                            np.column_stack([self.u, self.v, Vmodel.real, Vmodel.imag, self.w, self.lams]),
                            fmt='%10.6e', delimiter='\t',
@@ -140,9 +140,9 @@ class UVData:
 
     def chi2(self, ims=None, dxy=None, disk=None, PA=0., dRA=0., dDec=0., F_star=0, imchecked=False):
         chi2 = 0
-        PA *= np.pi /180
-        dRA *= np.pi /(180*3600)
-        dDec *= np.pi/(180*3600)
+        PA *= np.pi /180 # PA IS IN RADIANS
+        dRA *= np.pi /(180*3600) 
+        dDec *= np.pi/(180*3600) 
 
         if ims == None:
             assert len(disk.ims) == len(self.re)
@@ -150,7 +150,7 @@ class UVData:
 
         gd.threads(num=1)
         Vstar=F_star*np.exp(2*np.pi*1j*(self.u*dRA +self.v*dDec))
-        
+
         for i, im in enumerate(ims):
             val, dxy = prepare_image(im, self.mrs, self.chans)
             if self.filetype=='txt':
@@ -163,7 +163,8 @@ class UVData:
                                      self.w, 
                                      PA=(np.pi/2+PA),
                                      dRA=dRA,
-                                     dDec=dDec)
+                                     dDec=dDec,
+                                     origin='lower')
             if self.filetype=='fits':
                 re = self.re[i,:,0].byteswap().newbyteorder().squeeze()
                 imag = self.im[i,:,0]
@@ -178,8 +179,9 @@ class UVData:
                                      imag.copy(order='C'), 
                                      w.copy(order='C'), 
                                      PA=(np.pi/2+PA),
-                                     dRA=dRA,
-                                     dDec=dDec)
+                                     dRA=dRA, #add stuff from seba here?
+                                     dDec=dDec,
+                                     origin='lower') #add stuff from seba here?
                 re = self.re[i,:,1].byteswap().newbyteorder().squeeze()
                 imag = self.im[i,:,1]
                 w = self.w[i,:,1]
@@ -191,8 +193,9 @@ class UVData:
                                      imag.copy(order='C'), 
                                      w.copy(order='C'), 
                                      PA=(np.pi/2+PA),
-                                     dRA=dRA,
-                                     dDec=dDec)
+                                     dRA=dRA, #add stuff from seba here?
+                                     dDec=dDec,
+                                     origin='lower') #add stuff from seba here?
 
         return chi2
 
@@ -250,11 +253,11 @@ def fill_in(val, min_pixels):
 
 
 def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False, filetype='fits'):
-    dRA *= np.pi/180/3600
-    dDec *= np.pi/180/3600
+    dRA *= np.pi/180/3600 
+    dDec *= np.pi/180/3600 
     PA *= np.pi/180 
     modfile=fits.open(modfile+str('.fits'))
-    
+
     if type(datafile) == list:
         cs = 0
         for i, df in enumerate(datafile):
@@ -289,8 +292,8 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_
         Vmodel = gd.sampleImage(image,
                             dpix_rad,
                             u, v,
-                            dRA=dRA,
-                            dDec=dDec,
+                            dRA=dRA, 
+                            dDec=dDec, 
                             PA=PA+np.pi/2.0,
                             origin='lower')
         # add star in visibility space
@@ -302,8 +305,8 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_
                    np.column_stack([u, v, Vmodel.real, Vmodel.imag, w, lams]),
                    fmt='%10.6e', delimiter='\t',
                    header='Model {}.\nwavelength[m] = {}\nColumns:\tu[lambda]\tv[lambda]\tRe(V)[Jy]\tIm(V)[Jy]\tweight\tlambda[m]'.format(fileout, np.mean(lams)))
-
-
+    
+    
     # compute chi2
     # subtract fstar first from observed visibilities
     chi2 = gd.chi2Image(image, dpix_rad, u, v,
@@ -312,13 +315,13 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_
                      w,
                      dRA=dRA,
                      dDec=dDec,
-                     PA=PA,
+                     PA=PA+np.pi/2.0,
                      origin='lower' )
     return chi2
 
 def fits_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False):
         model_fits = fits.open(modfile) # I now open the model fits file
-        
+
         if dxy == None:
             dxy = model_fits[0].header['CDELT2']
             dxy *= np.pi/180
@@ -352,7 +355,7 @@ def fits_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F
 
                 image = np.require(image, requirements='C') # and this is from the galario documentation -- you get some stupid
 
-                vis = gd.sampleImage(image[:,:], dxy, u, v, dRA = dRA, dDec = dDec, PA=PA+np.pi/2.0, origin='lower')
+                vis = gd.sampleImage(image[:,:], dxy, u, v, dRA = dRA, dDec = dDec, PA=PA+np.pi/2.0, origin='lower') 
                 vis = vis + Vstar
 
                 model_vis[:,0,0,i,0,0,0] = vis.real
@@ -422,7 +425,7 @@ def chiSqStack(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, residua
                 u, v = (data_vis[0].data['UU'] * freq).astype(np.float64), (data_vis[0].data['VV'] * freq).astype(np.float64)
                 foo = model_cor # this is just the corrected model image which i renamed for some weird reason
 
-                vis = gd.sampleImage(model_cor[:,:], dxy, u, v, dRA = dRA, dDec = dDec, PA=PA+np.pi/2.0, origin='lower')
+                vis = gd.sampleImage(model_cor[:,:], dxy, u, v, dRA = dRA, dDec = dDec, PA=PA+np.pi/2.0, origin='lower') #add stuff from seba here?
 
                 model_vis[:,0,0,i,0,0,0] = vis.real
                 model_vis[:,0,0,i,0,1,0] = vis.real # here I throw the created model visibilities into corresponding 

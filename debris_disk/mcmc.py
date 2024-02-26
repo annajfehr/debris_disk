@@ -51,6 +51,8 @@ class MCMC:
         vis = DD.UVDataset(uvdata, filetype=filetype)
         self.obs_params = DD.Observation(vis=vis,
                                          json_file='/arc/projects/ARKS/parametric_modeling/REASONS.json',
+                                         #json_file='/Volumes/disks/brianna/REASONS.json', # for kazul/katsa versions
+                                         #json_file='/zfshomes/bzawadzki/REASONS.json', # for Wes cluster version
                                          sys_name=name)
         self.vis = vis.__dict__
         self.filetype=filetype
@@ -214,7 +216,7 @@ class MCMC:
                                         file_dir,
                                         verbose], 
                                   pool=pool)
-
+        
         if os.path.exists(outfile):
             restart=outfile
 
@@ -225,11 +227,21 @@ class MCMC:
             init_pos = np.random.normal(loc=self.p0,
                                         size=(nwalkers,self.ndim),
                                         scale=self.scale)
+        if verbose:
+            print("init pos!!")
+            print(init_pos)
         run = sampler.sample(init_pos, iterations=nsteps, store=True)
 
         print('Beginning Chain')
 
         for i, (pos, lnprob, _) in enumerate(run):
+            if verbose:
+                print("\n")
+                print("run information, i=", str(i))
+                print("param vals: ")
+                print(pos)
+                print("lnprobs for a step: ")
+                print(lnprob)
             with open(outfile, 'a+') as f:
                 np.savetxt(f, np.c_[pos, lnprob.T])
 
@@ -306,7 +318,7 @@ def lnpost(p,
         print('OBS_PARAM = ', viewing_params)
 
     mod = Disk(obs=obs_params, **fixed_args, **disk_params)
-
+    
     if verbose:
         print('Generated model')
 
