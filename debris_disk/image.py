@@ -90,11 +90,10 @@ class Image:
         hdu.writeto(outfile, overwrite=True, output_verify='fix')
 
     def beam_corr(self, nu, D):
-        lamb = const.c / nu
+        lamb = (const.c/100) / nu # wavelength in [m]
         xx, yy = np.meshgrid(self.x, self.y)
-        dst = np.sqrt(xx**2+yy**2)
-        sigma = 1.13 * lamb / D / (2 * np.sqrt(2 * np.log(2)))
-
+        dst = np.sqrt(xx**2+yy**2) # in arcseconds
+        sigma = 206265 * 1.13 * lamb / D / (2 * np.sqrt(2 * np.log(2))) # in arcsec
         norm = profiles.gaussian.norm(dst, sigma)**2
         self.beam = profiles.gaussian.val(dst, sigma) 
         self.val *= self.beam

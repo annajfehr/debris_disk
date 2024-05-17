@@ -2,10 +2,12 @@ import os
 import numpy as np
 from astropy.io import fits
 import galario.double as gd
-
+import debris_disk.constants as const
+from debris_disk import profiles
 
 class UVDataset:
-    def __init__(self, f=None, stored=None, filetype='txt'):
+    def __init__(self, f=None, stored=None, filetype='txt', freq=3.380857111374e11):
+        # frequency is in Hz
         if stored:
             for key in stored:
                 setattr(self, key, stored[key])
@@ -20,7 +22,7 @@ class UVDataset:
         self._mrs()
         self._resolution()
         self.chans = [ds.chans for ds in self.datasets]
-        #self.chans = [element for ds in self.datasets for element in ds.chans]
+        self.freq = freq # frequency of obs in Hz
 
     def _mrs(self):
         self.mrs = [ds.mrs for ds in self.datasets]
@@ -59,19 +61,19 @@ class UVDataset:
 
 
 class UVData:
-    def __init__(self, f=None, stored=None, filetype='txt'):
+    def __init__(self, f=None, stored=None, filetype='txt', freq=3.380857111374e11):
         if stored:
             for key in stored:
                 setattr(self, key, stored[key])
             return
         self.file = f
         self.filetype=filetype
+        self.freq = freq
 
         if filetype == 'txt':
             self.u, self.v, self.real, self.imag, self.w, self.lams = np.require(np.loadtxt(f, unpack=True), requirements='C')
-            
-            self.chans  = np.unique(self.lams)[0]
-            self.chans *= 100
+            self.chans  = np.unique(self.lams)[0] # the lambda values in [m], actually this is only one of them. Don't wanna change it and break everything
+            self.chans *= 100 # the lambda values in [cm]
 
         if filetype == 'fits':
             data = fits.open(f)[0]
@@ -101,15 +103,9 @@ class UVData:
 
     def _mrs(self):
         self.mrs = find_mrs(self.u, self.v)
-        #self.mrs = np.empty(len(self.u))
-        #for i, (u, v) in enumerate(zip(self.u, self.v)):
-        #    self.mrs[i] = find_mrs(u, v)
 
     def _resolution(self):
         self.resolution = find_resolution(self.u, self.v)
-        #self.resolution = np.empty(len(self.u))
-        #for i, (u, v) in enumerate(zip(self.u, self.v)):
-        #    self.resolution[i] = find_resolution(u, v)
     
     def sample(self, ims=None, dxy=None, disk=None, modout='mod', PA=0., dRA=0., dDec=0., F_star=0, imchecked=False):
         PA *= np.pi /180 # PA is now in RADIANS!
@@ -119,7 +115,7 @@ class UVData:
         Vstar=F_star*np.exp(2*np.pi*1j*(self.u*dRA +self.v*dDec))
 
         for i, im in enumerate(ims):
-            val, dxy = prepare_image(im, self.mrs, self.chans)
+            val, dxy = prepare_image(im, self.mrs, self.freq)#self.chans)
             
             if self.filetype=='txt':
                 Vmodel = gd.sampleImage(val,
@@ -152,7 +148,7 @@ class UVData:
         Vstar=F_star*np.exp(2*np.pi*1j*(self.u*dRA +self.v*dDec))
 
         for i, im in enumerate(ims):
-            val, dxy = prepare_image(im, self.mrs, self.chans)
+            val, dxy = prepare_image(im, self.mrs, self.freq)#self.chans)
             if self.filetype=='txt':
                 chi2 += gd.chi2Image(val, 
                                      dxy, 
@@ -204,7 +200,7 @@ def prepare_image(im, mrs, nu):
     dxy = im.imres * np.pi /(180*3600) 
     
     im.square()
-    #im.beam_corr(nu, 12)
+    im.beam_corr(nu, 12)
     val = im.val[::-1,:].copy(order='C')
     min_pixels = int(2 * mrs / dxy)+1
 
@@ -215,10 +211,20 @@ def prepare_image(im, mrs, nu):
 
     return val, dxy
 
-def prepare_val(val, dxy, mrs, nu):
-    #im.beam_corr(nu, 12)
+def prepare_val(val, dxy, mrs, nu, imres):
+    # essentially copy of beam corr from image.py, but modded to not require an Image object
+    lamb = (const.c/100) / nu # wavelength in m
+    start = int(val[0].size/2) # starting point of the meshgrid (so that it ends up centered at 0)
+    xvals = imres*(np.linspace(-start, start-1, val[0].size)) # from -rmax to rmax
+    yvals = imres*(np.linspace(-start, start-1, val[0].size)) # from -rmax to rmax
+    xx, yy = np.meshgrid(xvals, yvals) # mesh grid of coords, centered on center of image (i.e. goes from -rmax to rmax along both axes)
+    dst = np.sqrt(xx**2+yy**2) # distance of each coord from center of meshgrid
+    D=12 # 12 m antennae
+    sigma = 206265 * 1.13 * lamb / D / (2 * np.sqrt(2 * np.log(2))) # 1.13 lamda/D gives the angular FWHM of the field of view, dividing by (2 sqrt(2np.log(2))) links to standard deviation sigma, multiplying by 206265 converts radians to "
+    beam = profiles.gaussian.val(dst, sigma) # both dst and sigma in arcseconds, make a gaussian for the primary beam
+    val *= beam # multiply image values by beam
+    
     val = val[::-1,:].copy(order='C')
-
     min_pixels = int(2 * mrs / dxy)+1
 
     if min_pixels % 2 != 0:
@@ -252,7 +258,7 @@ def fill_in(val, min_pixels):
     return new
 
 
-def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False, filetype='fits'):
+def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False, filetype='fits', imres=0.005, freq=3.380857111374e11):
     dRA *= np.pi/180/3600 
     dDec *= np.pi/180/3600 
     PA *= np.pi/180 
@@ -265,12 +271,12 @@ def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star
                 if filetype=='fits':
                     cs += fits_chiSq(df, modfile, str(i)+fileout, dxy, dRA, dDec, PA, F_star, residual)
                 if filetype=='txt':
-                    cs += txt_chiSq(df, modfile, str(i)+fileout, dxy, dRA, dDec, PA, F_star,  residual)
+                    cs += txt_chiSq(df, modfile, str(i)+fileout, dxy, dRA, dDec, PA, F_star,  residual, imres, freq)
             else:
                 if filetype=='fits':
                     cs += fits_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, F_star, residual)
                 if filetype=='txt':
-                    cs += txt_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, F_star, residual)
+                    cs += txt_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, F_star, residual, imres, freq)
         return cs
     else:
         if filetype=='fits':
@@ -278,14 +284,15 @@ def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star
         if filetype=='txt':
             return txt_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, F_star, residual)
 
-def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False):
+def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False, imres=0.005, freq=3.380857111374e11):
     image=modfile[0].data.astype('double') # important for Galario sometimes
     dpix_deg=modfile[0].header['CDELT2']
     dpix_rad=dpix_deg*np.pi/180.
 
     u, v, Vreal, Vimag, w, lams = np.require(np.loadtxt(datafile, unpack=True), requirements='C')
     mrs = find_mrs(u, v)
-    image = prepare_val(image, dpix_rad, mrs, 3.3e11)
+
+    image = prepare_val(image, dpix_rad, mrs, freq, imres)
     Vstar=F_star*np.exp(2*np.pi*1j*(u*dRA +v*dDec))
 
     if fileout:
