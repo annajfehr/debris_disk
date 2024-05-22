@@ -501,7 +501,7 @@ class Disk:
         nS = int(6 * Slim / self.modres)
         
         if self.nX * self. nY * nS * 8 * 5 > self.max_mem: # 8 bits/float, 5 copies of the array    
-            print('memory too high')
+            print("Required memory exceeds available memory")
             return False
 
         X = np.linspace(-Xlim, Xlim, self.nX)
