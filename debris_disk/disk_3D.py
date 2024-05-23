@@ -257,8 +257,8 @@ class Disk:
         self.nphi = self.na # Should we calculate the number of pixels in phi a different way?
 
         # Define grid in semimajor axis
-        self.a = np.linspace(self.abounds[0], self.abounds[1], self.na)
-        self.p = np.linspace(0., 2*np.pi, self.nphi)
+        self.a = np.linspace(self.abounds[0], self.abounds[1], self.na) # semimajor axis grid
+        self.p = np.linspace(0., 2*np.pi, self.nphi) # azimuthal angel grid (from line of nodes)
  
         self.zmax=self.abounds[1]/10 # For now, let's assume that zmax < amax/10 (good for a thin disk, definitely look at this for a thick disk)
         self.nz = int(5 * self.zmax / self.modres) # 5x final image resolution
