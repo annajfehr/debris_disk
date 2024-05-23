@@ -120,6 +120,12 @@ class Disk:
         radial_params : dictionary of float
             Arguments for radial profile, must match radial_func. All distances
             should be in au. Default is {'alpha' : 1, 'Rin' : 10, 'Rout' : 40}
+        rmax : float or none
+            Maximum radius to calculate the density grid, in arcsec
+        ecc : float
+            Eccentricity of the disk. Float between zero and one
+        aop : float
+            Argument of periastron, in radians. Measured counterclockwise from *West*.
         gap : bool, optional
             Whether to include a Gaussian gap in the radial structure, default
             is False
@@ -241,30 +247,31 @@ class Disk:
         else:
             self._rbounds() # Find radial extent
 
+        # calculate abounds from rbounds. For each orbit, periastron is a * (1-e), apoastron is a * (1+e)
         self.abounds = [self.rbounds[0]/(1-self.ecc), self.rbounds[1]/(1+self.ecc)]
 
         # Set number of pixels in 2d radial array to 5 times the desired final
         # image resolution
-        self.na = int(5  * (self.abounds[1] - self.abounds[0]) / self.modres) 
-        # Define radial sampling grid 
         
-        self.a = np.linspace(self.abounds[0], self.abounds[1], self.na)
-        self.p = np.linspace(0., 2*np.pi, self.na)
- 
-        # Calculates scale height as a function of r
-        #vert_struct = self.H(**self.vert_params)
+        self.na = int(5  * (self.abounds[1] - self.abounds[0]) / self.modres) 
+        self.nphi = self.na # Should we calculate the number of pixels in phi a different way?
 
-        #self._zmax(vert_struct[0]) # Find vertical extent
-        self.zmax=self.abounds[1]/10
+        # Define grid in semimajor axis
+        self.a = np.linspace(self.abounds[0], self.abounds[1], self.na)
+        self.p = np.linspace(0., 2*np.pi, self.nphi)
+ 
+        self.zmax=self.abounds[1]/10 # For now, let's assume that zmax < amax/10 (good for a thin disk, definitely look at this for a thick disk)
         self.nz = int(5 * self.zmax / self.modres) # 5x final image resolution
         self.z = np.linspace(0, self.zmax, self.nz)
-        pp, aa, zz = np.meshgrid(self.p, self.a, self.z)
-
-        rr = (aa*(1.-self.ecc*self.ecc)/(1.+self.ecc*np.cos(pp)))
+        pp, aa, zz = np.meshgrid(self.p, self.a, self.z) # Make 3d grids
+        self.aa = aa 
+        rr = (aa*(1.-self.ecc*self.ecc)/(1.+self.ecc*np.cos(pp))) # Make r grid (important for temperature calculation)
         self.rr = rr
-        vert_struct = self.H(**self.vert_params)
+        vert_struct = self.H(**self.vert_params) # Calculate vertical structure (vert_struct is 3D)
+
         assert self._rho2d(pp, aa, zz, rr, vert_struct)  # create 2d disk density structure
         assert self._T2d(rr, zz) # Calculate 2d temperature array
+        
         return True
 
     def _rbounds(self):
@@ -295,7 +302,7 @@ class Disk:
         Hnorm : float    
             integral of H
         """
-        H = Hc * (self.rr / Rc)**psi
+        H = Hc * (self.aa / Rc)**psi
         self.Harr = H
         Hnorm = (Hc / (psi+1)) * ((self.rbounds[1] / Rc)**(psi+1) - \
                 (self.rbounds[0] / Rc)**(psi+1))
@@ -326,9 +333,9 @@ class Disk:
 
     def _rho2d(self, pp, aa, zz, rr, vert_struct):
         """
-        Initialize self.rho2d, a nr x nz matrix where self.rho2d[i, j] is the
+        Initialize self.rho2d, a np x na x nz matrix where self.rho2d[i, j, k] is the
         surface density of the disk (g/cm^2) at the location described by
-        self.zz[i], self.zz[j]
+        self.p[i], self.a[j], self.z[k]
 
         Parameters
         ---------
@@ -346,50 +353,50 @@ class Disk:
         True upon success
         """
         
-        # Radial x vertical density structure
+        # Radial x vertical x azimuthal density structure
         self.rho2d = self.sigma(aa) * self.vert(zz, *vert_struct) * self.sigphi(aa, pp)
         np.nan_to_num(self.rho2d, nan=1e-60) # Check for nans
         return True
 
-    def sigma(self, rr):
+    def sigma(self, aa):
         """
         Produce radial density structure
 
         Parameters
         ----------
-        rr : array of floats
-            an nr x nz array of distances from the center of the disk
+        aa : array of floats
+            an np x na x nz array of semi-major axes from the center of the disk
 
         Returns
         -------
-        an nr x nz array where arr[i, j] is the value of the radial profile at
-        self.r[i]
+        an np x na x nz array where arr[i, j, k] is the value of the radial profile at
+        self.a[j]
         """
 
         def profile_from_func(radial_func, params):
             if radial_func == 'powerlaw':
-                return profiles.powerlaw.val(rr, **params)
+                return profiles.powerlaw.val(aa, **params)
             
             if radial_func == 'powerlaw_errf':
-                return profiles.powerlaw_errf.val(rr, **params)
+                return profiles.powerlaw_errf.val(aa, **params)
 
             if radial_func == 'double_powerlaw':
-                return profiles.double_powerlaw.val(rr, **params)
+                return profiles.double_powerlaw.val(aa, **params)
             
             if radial_func == 'triple_powerlaw':
-                return profiles.triple_powerlaw.val(rr, **params)
+                return profiles.triple_powerlaw.val(aa, **params)
 
             if radial_func == 'gaussian':
-                return profiles.gaussian.val(rr, **params)
+                return profiles.gaussian.val(aa, **params)
             
             if radial_func == 'single_erf':
-                return profiles.single_erf.val(rr, **params)
+                return profiles.single_erf.val(aa, **params)
             
             if radial_func == 'asymmetric_gaussian':
-                return profiles.asymmetric_gaussian.val(rr, **params)
+                return profiles.asymmetric_gaussian.val(aa, **params)
 
         if type(self.radial_func) == list:
-            val = np.zeros(np.shape(rr))
+            val = np.zeros(np.shape(aa))
             for func, params in zip(self.radial_func, self.radial_params):
                 try:
                     norm = params.pop('norm')
@@ -402,7 +409,7 @@ class Disk:
         def make_gap(params):
             gap_params = profiles.gaussian.conversion(params, const.AU)
             gap = 1-(gap_params.pop('depth') * \
-                    profiles.gaussian.val(rr, **gap_params))
+                    profiles.gaussian.val(aa, **gap_params))
             return gap
 
         if self.gap:
@@ -448,7 +455,24 @@ class Disk:
         return self.vert_arr
 
     def sigphi(self, aa, pp):
-        pp=(pp-self.aop)%(2.*np.pi)
+        '''
+        Produce azimuthal density structure
+
+        Parameters
+        ----------
+        aa : array of floats
+            an np x na x nz array giving the semimajor axis at each pixel
+        pp : array of floats
+            an np x na x nz array giving the azimuth at each pixel
+
+        Returns 
+        -------
+        an np x na x nz array where arr[i. j , k] is the value of the azimuthal variation at
+        (self.p[i], self.r[j]). In this implementation, eccentricity is constant with semi-major axis
+        '''
+        pp=(pp-self.aop)%(2.*np.pi) # subtract argument of periastron (rotates counter clockwise)
+
+        # Equation from ???
         dsdth = (aa*(1-self.ecc*self.ecc)*np.sqrt(1+2*self.ecc*np.cos(pp)+self.ecc*self.ecc))/(1+self.ecc*np.cos(pp))**2
         return (np.sqrt(1.-self.ecc*self.ecc))/(2*np.pi*aa*np.sqrt(1+2*self.ecc*np.cos(pp)+self.ecc*self.ecc))*dsdth
     
@@ -501,7 +525,7 @@ class Disk:
         nS = int(6 * Slim / self.modres)
         
         if self.nX * self. nY * nS * 8 * 5 > self.max_mem: # 8 bits/float, 5 copies of the array    
-            print("Required memory exceeds available memory")
+            print('memory too high')
             return False
 
         X = np.linspace(-Xlim, Xlim, self.nX)
@@ -515,25 +539,22 @@ class Disk:
         xx, yy, self.S = np.meshgrid(X, Y, S)
 
         # transform grid to disk coordinates
-        #tdiskZ = self.zmax*(np.ones((self.nY, self.nX, nS)))*cosinc*self.S
-        tdiskZ = yy*sininc + self.S * cosinc
-        #if self.inc > np.arctan(self.abounds[1]/self.zmax):
-        #    tdiskZ -=(Y*sininc).repeat(self.nz).reshape(self.nphi,self.nr,self.nz)
-        tdiskY = yy*cosinc - sininc*S #.reshape(self.nY,self.nX,nS)
-        tr = np.sqrt(xx**2+tdiskY**2)
-        tphi = np.arctan2(tdiskY,xx)%(2*np.pi)
+        tdiskZ = yy*sininc + self.S * cosinc # z value of each pixel on the X x Y x S grid
+        tdiskY = yy*cosinc - sininc*S # y value (in disk coordinates) for each pixel on the X x Y x S grid
+        tr = np.sqrt(xx**2+tdiskY**2) # r value (in disk coordinates) for each pixel on the X x Y x S grid
+        tphi = np.arctan2(tdiskY,xx)%(2*np.pi) # phi value (in disk coordinates) for each pixel on the X x Y x S grid
 
 
-        zind = np.interp(np.abs(tdiskZ).flatten(),self.z,range(self.nz)) #zf,nzc
+        zind = np.interp(np.abs(tdiskZ).flatten(),self.z,range(self.nz)) # interpolate from X x Y x S grid to P x R x Z grid
         phiind = np.interp(tphi.flatten(),self.p,range(self.na))
         aind = np.interp((tr.flatten()*(1+self.ecc*np.cos(tphi.flatten()-self.aop)))/(1.-self.ecc**2),self.a,range(self.na),right=self.na)
 
 
         
-        self.T=ndimage.map_coordinates(self.T2d,[[aind],[phiind],[zind]],order=5).reshape(self.nY,self.nX, nS) 
+        self.T=ndimage.map_coordinates(self.T2d,[[aind],[phiind],[zind]],order=5).reshape(self.nY,self.nX, nS) # Map from P x R x Z to X x Y x S
         self.T[self.T<=0] = np.min(self.T2d)
         self.rho=ndimage.map_coordinates(self.rho2d,[[aind],[phiind],[zind]],order=5).reshape(self.nY, self.nX, nS)  
-        print('rho computed')
+        
         assert np.shape(self.S) == np.shape(self.T)
         assert np.shape(self.S) == np.shape(self.rho)
         return True
