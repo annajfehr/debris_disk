@@ -78,9 +78,9 @@ class Disk:
     """
     def __init__(self,
                  L_star=1.,
-                 sigma_crit = 1e-18, # g/cm^3
+                 sigma_crit = 1e-18, # g/cm^2
                  inc=0, # degrees
-                 F_star=0, #microjy
+                 F_star=0, # Jy
                  radial_func='powerlaw',
                  radial_params={'alpha' : 1., 
                                 'Rin' : 10, 
@@ -111,7 +111,7 @@ class Disk:
         inc : float, optional
             Inclination of the disk relative to the viewer [degrees], default is 0. 
         F_star : float
-            Emission from the star [microjy], default is 0
+            Emission from the star [Jy], default is 0
         radial_func : {'powerlaw', 'powerlaw_errf', 'double_powerlaw',
                        'triple_powerlaw'}, optional
             Functional form of the radial profile, default is 'powerlaw'
@@ -145,17 +145,25 @@ class Disk:
         self.max_mem = .75 * memory/16 * 1e9
 
         if obs:
+            #print("obs activated!")
             if type(obs) == dict:
                 obs = Observation(**obs)
             self.obs = obs
-            self.modres = obs.imres * obs.distance * const.AU
+            self.modres = obs.imres * obs.distance * const.AU # modres [cm/pixel]; obs.imres is in arcsec/pixel, obs.distance is in pc, const.AU is cm/AU
+            #print("imres: ", obs.imres)
+            #print("distance: ", obs.distance)
+            #print("const.AU: ", const.AU)
+            #print("modres: ", self.modres)
             # self.max_r = obs.distance * 8 * const.AU
             self.max_r = obs.distance * obs.beam_fwhm * 3600 * 180 / np.pi * const.AU
         else:
+            print("NO obs activated!")
             self.modres = 0.5 * const.AU
             self.max_r = 50 * 8 * const.AU
         if rmax:
-            self.max_r = obs.distance * rmax * const.AU
+            #print("rmax activated!")
+            self.max_r = obs.distance * rmax * const.AU # rmax in cm
+            #print("rmax: ", self.max_r)
 
         if 'Rin' in radial_params:
             if radial_params['Rin'] > radial_params['Rout']:
@@ -165,6 +173,9 @@ class Disk:
         self.L_star = L_star
         self.F_star = F_star
         self.sigma_crit = sigma_crit
+        #print("Lstar: ", self.L_star)
+        #print("Fstar: ", self.F_star)
+        #print("sigmacrit: ", self.sigma_crit)
         
         if inc < 90:
             self.inc = inc * np.pi / 180.
@@ -172,12 +183,15 @@ class Disk:
             self.inc = (180 - inc) * np.pi/180
 
         self.radial_func = radial_func
-        self.radial_params = self.rp_convert(radial_params.copy())
+        self.radial_params = self.rp_convert(radial_params.copy()) # convert params from AU to cm
         
         if rbounds:
             self.rbounds=rbounds.copy()
+            print("rbounds given! ", self.rbounds)
         else:
             self.rbounds = rbounds
+            print("rbounds not given! ", self.rbounds)
+
 
         self.gap = gap
         self.gap_params = gap_params
@@ -196,7 +210,7 @@ class Disk:
         if obs and calc_image:
             self._im(obs) # Integrate to find image
     
-    def rp_convert(self, radial_params):
+    def rp_convert(self, radial_params): # convert relevant params to cm
         def convert_func(func, params):
             if func == 'gaussian':
                 return profiles.gaussian.conversion(params, const.AU)
@@ -240,26 +254,34 @@ class Disk:
         if self.rbounds:
             self.rbounds[0] *= const.AU
             self.rbounds[1] *= const.AU
+            print("rbounds given in struct2d! ", self.rbounds)
         else:
             self._rbounds() # Find radial extent
+            print("found the rbounds! ", self.rbounds)
 
         # Set number of pixels in 2d radial array to 5 times the desired final
         # image resolution
-        self.nr = int(5  * (self.rbounds[1] - self.rbounds[0]) / self.modres) 
+        self.nr = int(5  * (self.rbounds[1] - self.rbounds[0]) / self.modres) # modres in [cm]
 
         # Define radial sampling grid -- for 'powerlaw' profile use logspaced
         # grid, in all other cases use uniform sampling
-        self.r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
+        self.r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr) # in [cm]
+        #print("2d structure parameters")
+        #print("self.r: ", self.r)
+        #print("self.nr: ", self.nr)
+        #print("self.rbounds[0]: ", self.rbounds[0])
+        #print("self.rbounds[1]: ", self.rbounds[1])
+        #print("self.modres: ", self.modres)
  
         # Calculates scale height as a function of r
         vert_struct = self.H(**self.vert_params)
 
         self._zmax(vert_struct[0]) # Find vertical extent
-        self.nz = int(5 * self.zmax / self.modres) # 5x final image resolution
+        self.nz = int(5 * self.zmax / self.modres) # 5x final image resolution, modres in [cm]
 
         self.z = np.linspace(0, self.zmax, self.nz)
         
-        rr, zz = np.meshgrid(self.r, self.z)
+        rr, zz = np.meshgrid(self.r, self.z) # rr, zz meshgrid in cm
         assert self._rho2d(rr, zz, vert_struct)  # create 2d disk density structure
         assert self._T2d(rr, zz) # Calculate 2d temperature array
         return True
@@ -273,6 +295,7 @@ class Disk:
         None
         """
         self.rbounds =  [self.modres/2, self.max_r]
+        print("inside _rbounds()")
  
     def H(self, Hc, Rc, psi, gamma=2):
         """
@@ -344,7 +367,9 @@ class Disk:
         """
         
         # Radial x vertical density structure
-        self.rho2d = self.sigma(rr) * self.vert(zz, *vert_struct) 
+        print("radial grid rr:", np.shape(rr))
+        print("radial grid rr:", rr)
+        self.rho2d = self.sigma(rr) * self.vert(zz, *vert_struct) # rr, zz in [cm], rho2d in g/cm^2
         np.nan_to_num(self.rho2d, nan=1e-60) # Check for nans
         return True
 
@@ -363,7 +388,7 @@ class Disk:
         self.r[i]
         """
 
-        def profile_from_func(radial_func, params):
+        def profile_from_func(radial_func, params): # params have been coverted to cm at this point (rr also in cm)
             if radial_func == 'powerlaw':
                 return profiles.powerlaw.val(rr, **params)
             
@@ -425,6 +450,13 @@ class Disk:
             val*=gap
             self.g = gap
 
+        print("radial profile fun times")
+        print(np.shape(val))
+        print(np.mean(val))
+        print(np.max(val))
+        print(np.min(val))
+        print(np.sum(val))
+        print(val)
         self.sigma= self.sigma_crit * val
         return self.sigma_crit * val
 
@@ -474,7 +506,7 @@ class Disk:
         """
         dist = np.sqrt((rr**2) + (zz**2))
         self.dist = dist
-        self.T2d = (self.L_star * const.Lsun / (16. * np.pi * (dist**2) * const.sigmaB))**0.25
+        self.T2d = (self.L_star * const.Lsun / (16. * np.pi * (dist**2) * const.sigmaB))**0.25 # all in cgs
         return True
 
     def incline(self):
@@ -557,19 +589,31 @@ class Disk:
         tau = cumtrapz(self.rho, self.S, axis=2, initial=0.)
         
         for n in obs.nu:
-            kap = 10 * (n/1e12)**const.beta
+            #print("OBS NU INFO")
+            #print(obs.nu)
+            #print(n)
+            kap = 10 * (n/1e12)**const.beta # cm^2/g
             tau *= kap
 
             # Knu_dust = kap*self.rho      # - dust absorbing coefficient
             # Snu = BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
-
+            #print("APPENDING THE IMAGE!!!")
+            #print("obs.imres: ", obs.imres)
+            #print("self.modres: ", self.modres)
+            #print("self.rho mean: ", np.mean(self.rho))
+            #print("self.rho max: ", np.max(self.rho))
+            #print("self.rho shape: ", np.shape(self.rho))
             #arg = kap*self.rho*np.exp(-tau)*BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
             self.ims.append(Image(trapezoid(kap*self.rho*np.exp(-tau)*BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.), 
-                                            self.S, 
+                                            self.S, # integrate over the whole disk (S is the distance from the center of the disk along the observer LOS)
                                             axis=2),
                                   obs.imres,
                                   modres=self.modres))
-            self.ims[-1].add_star(self.F_star)
+            # Initialization of image: input in [erg / (s cm^2 Hz)] but then immediately converted to Jy
+            # Wait is this in [erg / (s cm^2 Hz ster)]? We are integrating over self.S which is the projected distance from center of disk. Maybe that doesn't get rid of the ster like I thought
+            self.ims[-1].add_star(self.F_star) # add the star to the most recent image, also in Jy
+            #print("my star info:")
+            #print(self.F_star)
 
     def square(self):
         """

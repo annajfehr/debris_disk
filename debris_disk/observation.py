@@ -17,7 +17,11 @@ class Observation:
                  D=12):
         if vis:
             self.nu = const.c / vis.chans
-            self.imres = min([np.min(res*(180/np.pi) * 3600/2) for res in vis.resolution])
+            print("visbility resolutions!")
+            print(vis.resolution)
+            self.imres = min([np.min(res*(180/np.pi) * 3600/2) for res in vis.resolution]) # in arcseconds
+            print("new imres")
+            print(self.imres)
         else:
             self.nu = nu 
             self.imres=imres
