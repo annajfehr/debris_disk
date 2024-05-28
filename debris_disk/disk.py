@@ -187,10 +187,10 @@ class Disk:
         
         if rbounds:
             self.rbounds=rbounds.copy()
-            print("rbounds given! ", self.rbounds)
+            #print("rbounds given! ", self.rbounds)
         else:
             self.rbounds = rbounds
-            print("rbounds not given! ", self.rbounds)
+            #print("rbounds not given! ", self.rbounds)
 
 
         self.gap = gap
@@ -254,10 +254,10 @@ class Disk:
         if self.rbounds:
             self.rbounds[0] *= const.AU
             self.rbounds[1] *= const.AU
-            print("rbounds given in struct2d! ", self.rbounds)
+            #print("rbounds given in struct2d! ", self.rbounds)
         else:
             self._rbounds() # Find radial extent
-            print("found the rbounds! ", self.rbounds)
+            #print("found the rbounds! ", self.rbounds)
 
         # Set number of pixels in 2d radial array to 5 times the desired final
         # image resolution
@@ -295,7 +295,7 @@ class Disk:
         None
         """
         self.rbounds =  [self.modres/2, self.max_r]
-        print("inside _rbounds()")
+        #print("inside _rbounds()")
  
     def H(self, Hc, Rc, psi, gamma=2):
         """
@@ -367,8 +367,8 @@ class Disk:
         """
         
         # Radial x vertical density structure
-        print("radial grid rr:", np.shape(rr))
-        print("radial grid rr:", rr)
+        #print("radial grid rr:", np.shape(rr))
+        #print("radial grid rr:", rr)
         self.rho2d = self.sigma(rr) * self.vert(zz, *vert_struct) # rr, zz in [cm], rho2d in g/cm^2
         np.nan_to_num(self.rho2d, nan=1e-60) # Check for nans
         return True
@@ -450,14 +450,9 @@ class Disk:
             val*=gap
             self.g = gap
 
-        print("radial profile fun times")
-        print(np.shape(val))
-        print(np.mean(val))
-        print(np.max(val))
-        print(np.min(val))
-        print(np.sum(val))
-        print(val)
+        
         self.sigma= self.sigma_crit * val
+        print("sigma_crit: ", self.sigma_crit)
         return self.sigma_crit * val
 
     def vert(self, zz, H, Hnorm, gamma=2):
@@ -482,12 +477,15 @@ class Disk:
         H2d = np.outer(np.ones(self.nz), H/(2*np.sqrt(2*np.log(2))))
         self.H2d= H2d
         if self.vert_func =='gaussian':
-            self.vert_arr = profiles.gaussian.val(zz, H2d)
+            normalize = profiles.gaussian.norm(H2d)
+            self.vert_arr = profiles.gaussian.val(zz, H2d)/normalize
  
         if self.vert_func =='lorentzian':
             self.vert_arr =  2*np.pi*profiles.gaussian.val(zz, H2d)/(Hnorm)
         
-        self.vert_arr /= np.outer(np.ones(self.nz), np.sum(self.vert_arr, axis=0))
+        #self.vert_arr /= np.outer(np.ones(self.nz), np.sum(self.vert_arr, axis=0))
+        #print("vert_arr after the bad norm")
+        #print(np.shape(self.vert_arr))
         return self.vert_arr
 
     def _T2d(self, rr, zz):
