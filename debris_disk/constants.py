@@ -16,6 +16,3 @@ rad     = 206264.806               # - radian to arcsecond conversion
 kms     = 1e5                      # - convert km/s to cm/s
 Ghz     = 1e9                      # - Ghz (hz)
 beta    = 1
-c       = const.c.cgs.value        # - speed of light (cm/s)
-h       = const.h.cgs.value        # - Planck's constant (erg/s)
-kB      = const.k_B.cgs.value      # - Boltzmann's constant (erg/K)

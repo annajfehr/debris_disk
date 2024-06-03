@@ -5,7 +5,6 @@ import debris_disk.constants as const
 from debris_disk.image import Image
 from debris_disk.observation import Observation
 from debris_disk import profiles
-# from memory_profiler import profile
 
 class Disk:
     """
@@ -145,25 +144,16 @@ class Disk:
         self.max_mem = .75 * memory/16 * 1e9
 
         if obs:
-            #print("obs activated!")
             if type(obs) == dict:
                 obs = Observation(**obs)
             self.obs = obs
             self.modres = obs.imres * obs.distance * const.AU # modres [cm/pixel]; obs.imres is in arcsec/pixel, obs.distance is in pc, const.AU is cm/AU
-            #print("imres: ", obs.imres)
-            #print("distance: ", obs.distance)
-            #print("const.AU: ", const.AU)
-            #print("modres: ", self.modres)
-            # self.max_r = obs.distance * 8 * const.AU
             self.max_r = obs.distance * obs.beam_fwhm * 3600 * 180 / np.pi * const.AU
         else:
-            print("NO obs activated!")
             self.modres = 0.5 * const.AU
             self.max_r = 50 * 8 * const.AU
         if rmax:
-            #print("rmax activated!")
             self.max_r = obs.distance * rmax * const.AU # rmax in cm
-            #print("rmax: ", self.max_r)
 
         if 'Rin' in radial_params:
             if radial_params['Rin'] > radial_params['Rout']:
@@ -173,9 +163,6 @@ class Disk:
         self.L_star = L_star
         self.F_star = F_star
         self.sigma_crit = sigma_crit
-        #print("Lstar: ", self.L_star)
-        #print("Fstar: ", self.F_star)
-        #print("sigmacrit: ", self.sigma_crit)
         
         if inc < 90:
             self.inc = inc * np.pi / 180.
@@ -187,11 +174,8 @@ class Disk:
         
         if rbounds:
             self.rbounds=rbounds.copy()
-            #print("rbounds given! ", self.rbounds)
         else:
             self.rbounds = rbounds
-            #print("rbounds not given! ", self.rbounds)
-
 
         self.gap = gap
         self.gap_params = gap_params
@@ -250,14 +234,12 @@ class Disk:
     def structure2d(self):
         """
         Initialize density and temperature structures
-        """#debug note: this function is running
+        """
         if self.rbounds:
             self.rbounds[0] *= const.AU
             self.rbounds[1] *= const.AU
-            #print("rbounds given in struct2d! ", self.rbounds)
         else:
             self._rbounds() # Find radial extent
-            #print("found the rbounds! ", self.rbounds)
 
         # Set number of pixels in 2d radial array to 5 times the desired final
         # image resolution
@@ -266,12 +248,6 @@ class Disk:
         # Define radial sampling grid -- for 'powerlaw' profile use logspaced
         # grid, in all other cases use uniform sampling
         self.r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr) # in [cm]
-        #print("2d structure parameters")
-        #print("self.r: ", self.r)
-        #print("self.nr: ", self.nr)
-        #print("self.rbounds[0]: ", self.rbounds[0])
-        #print("self.rbounds[1]: ", self.rbounds[1])
-        #print("self.modres: ", self.modres)
  
         # Calculates scale height as a function of r
         vert_struct = self.H(**self.vert_params)
@@ -295,7 +271,6 @@ class Disk:
         None
         """
         self.rbounds =  [self.modres/2, self.max_r]
-        #print("inside _rbounds()")
  
     def H(self, Hc, Rc, psi, gamma=2):
         """
@@ -367,8 +342,6 @@ class Disk:
         """
         
         # Radial x vertical density structure
-        #print("radial grid rr:", np.shape(rr))
-        #print("radial grid rr:", rr)
         self.rho2d = self.sigma(rr) * self.vert(zz, *vert_struct) # rr, zz in [cm], rho2d in g/cm^2
         np.nan_to_num(self.rho2d, nan=1e-60) # Check for nans
         return True
@@ -452,7 +425,6 @@ class Disk:
 
         
         self.sigma= self.sigma_crit * val
-        print("sigma_crit: ", self.sigma_crit)
         return self.sigma_crit * val
 
     def vert(self, zz, H, Hnorm, gamma=2):
@@ -483,9 +455,8 @@ class Disk:
         if self.vert_func =='lorentzian':
             self.vert_arr =  2*np.pi*profiles.gaussian.val(zz, H2d)/(Hnorm)
         
+        # with new normalization included above, we don't need this line (leaving it here in case I'm having related issues later)
         #self.vert_arr /= np.outer(np.ones(self.nz), np.sum(self.vert_arr, axis=0))
-        #print("vert_arr after the bad norm")
-        #print(np.shape(self.vert_arr))
         return self.vert_arr
 
     def _T2d(self, rr, zz):
@@ -587,31 +558,16 @@ class Disk:
         tau = cumtrapz(self.rho, self.S, axis=2, initial=0.)
         
         for n in obs.nu:
-            #print("OBS NU INFO")
-            #print(obs.nu)
-            #print(n)
             kap = 10 * (n/1e12)**const.beta # cm^2/g
             tau *= kap
 
-            # Knu_dust = kap*self.rho      # - dust absorbing coefficient
-            # Snu = BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
-            #print("APPENDING THE IMAGE!!!")
-            #print("obs.imres: ", obs.imres)
-            #print("self.modres: ", self.modres)
-            #print("self.rho mean: ", np.mean(self.rho))
-            #print("self.rho max: ", np.max(self.rho))
-            #print("self.rho shape: ", np.shape(self.rho))
-            #arg = kap*self.rho*np.exp(-tau)*BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
             self.ims.append(Image(trapezoid(kap*self.rho*np.exp(-tau)*BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.), 
                                             self.S, # integrate over the whole disk (S is the distance from the center of the disk along the observer LOS)
                                             axis=2),
                                   obs.imres,
                                   modres=self.modres))
-            # Initialization of image: input in [erg / (s cm^2 Hz)] but then immediately converted to Jy
-            # Wait is this in [erg / (s cm^2 Hz ster)]? We are integrating over self.S which is the projected distance from center of disk. Maybe that doesn't get rid of the ster like I thought
+            # Initialization of image: input in [erg / (s cm^2 Hz ster)] but then immediately converted to Jy/ster in image.py
             self.ims[-1].add_star(self.F_star) # add the star to the most recent image, also in Jy
-            #print("my star info:")
-            #print(self.F_star)
 
     def square(self):
         """

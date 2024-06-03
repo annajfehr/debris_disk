@@ -10,7 +10,6 @@ from debris_disk import Disk
 import debris_disk as DD
 from schwimmbad import MPIPool
 from emcee import EnsembleSampler
-#from memory_profiler import profile 
 
 class MCMC:
     """
@@ -285,7 +284,6 @@ def check_boundary(ranges, pos):
 
     return True
 
-#@profile
 def lnpost(p,
            params,
            ranges,
@@ -316,9 +314,6 @@ def lnpost(p,
     if verbose:
         print('DISK_PARAM = ', disk_params)
         print('VIEW_PARAM = ', viewing_params)
-        print('OBS_PARAM = ')
-        print(obs_params.nu)
-        print(obs_params.imres)
     mod = Disk(obs=obs_params, F_star=viewing_params['F_star'], **fixed_args, **disk_params)
     
     if verbose:

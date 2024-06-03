@@ -6,14 +6,10 @@ import debris_disk.constants as const
 from debris_disk import profiles
 
 class UVDataset:
-    def __init__(self, f=None, stored=None, filetype='txt', freq=3.380857111374e11):
+    def __init__(self, f=None, stored=None, filetype='txt', freq=3.38225e11): # old freq was in as 3.380857111374e11
         # frequency is in Hz
         if stored:
-            print("HOLD YOUR PONIES LET'S CHECK OUT WHAT IS BEING STORED")
-            print(stored)
             for key in stored:
-                print(key)
-                print(stored[key])
                 setattr(self, key, stored[key])
             return
 
@@ -57,7 +53,6 @@ class UVDataset:
 
         images = disk.ims # the images we generated when the model Disk was initialized
         
-
         for i, ds in enumerate(self.datasets): # so ds is a single UVData object
             chi2+=ds.chi2(ims=[images[0]], dxy=dxy, disk=disk, PA=PA, dRA=dRA, dDec=dDec, F_star=F_star)
             images = images[1:] # okay either have this line and images[0], or omit this line and have images[i]
@@ -65,13 +60,9 @@ class UVDataset:
 
 
 class UVData:
-    def __init__(self, f=None, stored=None, filetype='txt', freq=3.380857111374e11):
+    def __init__(self, f=None, stored=None, filetype='txt', freq=3.38225e11): # old freq was in as 3.380857111374e11
         if stored:
-            print("HOLD YOUR HORSES LET'S CHECK OUT WHAT IS BEING STORED")
-            print(stored)
             for key in stored:
-                print(key)
-                print(stored[key])
                 setattr(self, key, stored[key])
             return
         self.file = f
@@ -84,7 +75,7 @@ class UVData:
             self.chans *= 100 # the lambda values in [cm]
 
         if filetype == 'fits':
-            print("Warning, you're in the fits zone of UVData in uvdata.py! We need to check for unit issues here!")
+            print("Warning, you're in the fits zone of UVData in uvdata.py! We haven't checked for unit issues here!")
             data = fits.open(f)[0]
             self.chans = np.arange(0, data.header['NAXIS5']) * data.header['CDELT4'] + data.header['CRVAL4']
             self.u = np.array([data.data['UU'] * chan for chan in self.chans]).astype(np.float64)
@@ -117,7 +108,6 @@ class UVData:
         self.resolution = find_resolution(self.u, self.v)
     
     def sample(self, ims=None, dxy=None, disk=None, modout='mod', PA=0., dRA=0., dDec=0., F_star=0, imchecked=False):
-        print("INSIDE sample()")
         PA *= np.pi /180 # PA is now in RADIANS!
         dRA *= np.pi /(180*3600) 
         dDec *= np.pi/(180*3600) 
@@ -126,13 +116,8 @@ class UVData:
 
         for i, im in enumerate(ims):
             val, dxy = prepare_image(im, self.mrs, self.freq)#self.chans)
-            print("sample stuff")
-            print("image: ", np.mean(val))
-            print(dxy)
-            print(self.u)
             if self.filetype=='txt':
                 # get complex array of model visibilities
-                print("about to run Galario sampleImage()")
                 Vmodel = gd.sampleImage(val, # [Jy/pixel]
                                     dxy, # [rad]
                                     self.u, self.v,
@@ -150,7 +135,6 @@ class UVData:
 
 
     def chi2(self, ims=None, dxy=None, disk=None, PA=0., dRA=0., dDec=0., F_star=0, imchecked=False):
-        print("INSIDE chi2()")
         chi2 = 0
         PA *= np.pi /180 # PA IS IN RADIANS
         dRA *= np.pi /(180*3600) 
@@ -162,17 +146,10 @@ class UVData:
 
         gd.threads(num=1)
         Vstar=F_star*np.exp(2*np.pi*1j*(self.u*dRA +self.v*dDec))
-        print("F_star: ", F_star)
-        print("Vstar: ", Vstar)
 
         for i, im in enumerate(ims):
             val, dxy = prepare_image(im, self.mrs, self.freq)#self.chans) # apply primary beam correction and get dxy in radians
             if self.filetype=='txt':
-                print("chi2 stuff")
-                print("image: ", np.mean(val))
-                print(dxy)
-                print(self.u)
-                print("About to run Galario chi2Image (for txt)")
                 chi2 += gd.chi2Image(val, # model image, in units of [Jy/pixel]
                                      dxy, # size of square image cell/pixel in [rad] (generated in prepare_image())
                                      self.u, # u visibility coordinates (in units of wavelength, as read in from the text files)
@@ -188,9 +165,6 @@ class UVData:
                 re = self.re[i,:,0].byteswap().newbyteorder().squeeze()
                 imag = self.im[i,:,0]
                 w = self.w[i,:,0]
-                #im = self.im[i,:,0].byteswap().newbyteorder().squeeze()
-                #w = self.w[i,:,0].byteswap().newbyteorder().squeeze()
-                print("About to run Galario chi2Image (for fits)")
                 chi2 += gd.chi2Image(val, 
                                      dxy, 
                                      self.u[i].copy(order='C'), 
@@ -205,7 +179,6 @@ class UVData:
                 re = self.re[i,:,1].byteswap().newbyteorder().squeeze()
                 imag = self.im[i,:,1]
                 w = self.w[i,:,1]
-                print("About to run Galario chi2Image (for fits again for some reason)")
                 chi2 += gd.chi2Image(val, 
                                      dxy, 
                                      self.u[i].copy(order='C'), 
@@ -222,14 +195,11 @@ class UVData:
 
 
 def prepare_image(im, mrs, nu):
-    print("prepare_image imres: ", im.imres)
     dxy = im.imres * np.pi /(180*3600) # imres in arcsec to dxy [rad]
     
     im.square()
     im.beam_corr(nu, 12)
     val = im.val[::-1,:].copy(order='C')
-    print("image vals: ", np.shape(val))
-    print("image vals: ", np.mean(val))
     min_pixels = int(2 * mrs / dxy)+1
 
     if min_pixels % 2 != 0:
@@ -248,7 +218,7 @@ def prepare_val(val, dxy, mrs, nu, imres):
     xx, yy = np.meshgrid(xvals, yvals) # mesh grid of coords, centered on center of image (i.e. goes from -rmax to rmax along both axes)
     dst = np.sqrt(xx**2+yy**2) # distance of each coord from center of meshgrid
     D=12 # 12 m antennae
-    sigma = 206265 * 1.13 * lamb / D / (2 * np.sqrt(2 * np.log(2))) # 1.13 lamda/D gives the angular FWHM of the field of view, dividing by (2 sqrt(2np.log(2))) links to standard deviation sigma, multiplying by 206265 converts radians to "
+    sigma = const.rad * 1.13 * lamb / D / (2 * np.sqrt(2 * np.log(2))) # 1.13 lamda/D gives the angular FWHM of the field of view, dividing by (2 sqrt(2np.log(2))) links to standard deviation sigma, multiplying by 206265 converts radians to "
     beam = profiles.gaussian.val(dst, sigma) # both dst and sigma in arcseconds, make a gaussian for the primary beam
     val *= beam # multiply image values by beam
     
@@ -274,7 +244,6 @@ def find_resolution(u, v): # angular resolution (comes from longest baseline)
         uvdist = np.hypot(u, v)
     else:
         uvdist = [np.max(np.hypot(up, vp)) for up, vp in zip(u, v)]
-    print("RESOLUTION IN FIND_RESOLUTION: ", 1 / (2 * np.max(uvdist)))
     return 1 / (2 * np.max(uvdist)) # see Eqn 3.27 in the ALMA technical handbook (Cycle 11)
 
 def fill_in(val, min_pixels):
@@ -287,7 +256,7 @@ def fill_in(val, min_pixels):
     return new
 
 
-def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False, filetype='fits', imres=0.005, freq=3.380857111374e11):
+def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False, filetype='fits', imres=0.005, freq=3.38225e11): # old freq was in as 3.380857111374e11
     dRA *= np.pi/180/3600 
     dDec *= np.pi/180/3600 
     PA *= np.pi/180 
@@ -313,8 +282,7 @@ def chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star
         if filetype=='txt':
             return txt_chiSq(df, modfile, fileout, dxy, dRA, dDec, PA, F_star, residual)
 
-def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False, imres=0.005, freq=3.380857111374e11):
-    print("INSIDE txt_chiSq()")
+def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False, imres=0.005, freq=3.38225e11): # old freq was in as 3.380857111374e11
     image=modfile[0].data.astype('double') # important for Galario sometimes
     dpix_deg=modfile[0].header['CDELT2']
     dpix_rad=dpix_deg*np.pi/180.
@@ -324,13 +292,8 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_
 
     image = prepare_val(image, dpix_rad, mrs, freq, imres)
     Vstar=F_star*np.exp(2*np.pi*1j*(u*dRA +v*dDec))
-    print("text chi squared stuff")
-    print("image: ", np.mean(image))
-    print(dpix_rad)
-    print(u)
 
     if fileout:
-        print("About to run Galario sampleImage")
         Vmodel = gd.sampleImage(image, # must be in Jy/pixel
                             dpix_rad, # must be in radians
                             u, v, # must be dimensionless (in units of observing wavelength)
@@ -351,7 +314,6 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_
     
     # compute chi2
     # subtract fstar first from observed visibilities
-    print("About to run Galario chi2Image")
     chi2 = gd.chi2Image(image, dpix_rad, u, v,
                      Vreal-Vstar.real,
                      Vimag-Vstar.imag,
@@ -363,7 +325,6 @@ def txt_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_
     return chi2
 
 def fits_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F_star=0, residual=False):
-        print("INSIDE fits_chiSq")
         model_fits = fits.open(modfile) # I now open the model fits file
 
         if dxy == None:
@@ -399,7 +360,6 @@ def fits_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F
 
                 image = np.require(image, requirements='C') # and this is from the galario documentation -- you get some stupid
 
-                print("About to run Galario sampleImage (for fits)")
                 vis = gd.sampleImage(image[:,:], dxy, u, v, dRA = dRA, dDec = dDec, PA=PA+np.pi/2.0, origin='lower') 
                 vis = vis + Vstar
 
@@ -432,7 +392,6 @@ def fits_chiSq(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, PA=0, F
         return chi
 
 def chiSqStack(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, residual=False):
-        print("INSIDE chiSqStack")
         if type(datafile) == list:
             datafile=datafile[0]
 
@@ -470,7 +429,7 @@ def chiSqStack(datafile, modfile, fileout=None, dxy=None, dRA=0, dDec=0, residua
                 freq = freq_start + i * delta_freq
                 u, v = (data_vis[0].data['UU'] * freq).astype(np.float64), (data_vis[0].data['VV'] * freq).astype(np.float64)
                 foo = model_cor # this is just the corrected model image which i renamed for some weird reason
-                print("About to run Galario sampleImage (for fits)")
+                
                 vis = gd.sampleImage(model_cor[:,:], dxy, u, v, dRA = dRA, dDec = dDec, PA=PA+np.pi/2.0, origin='lower') #add stuff from seba here?
 
                 model_vis[:,0,0,i,0,0,0] = vis.real
