@@ -5,7 +5,6 @@ import debris_disk.constants as const
 from debris_disk.image import Image
 from debris_disk.observation import Observation
 from debris_disk import profiles
-# from memory_profiler import profile
 
 class Disk:
     """
@@ -78,9 +77,9 @@ class Disk:
     """
     def __init__(self,
                  L_star=1.,
-                 sigma_crit = 1e-18, # g/cm^3
+                 sigma_crit = 1e-18, # g/cm^2
                  inc=0, # degrees
-                 F_star=0, #microjy
+                 F_star=0, # Jy
                  radial_func='powerlaw',
                  radial_params={'alpha' : 1., 
                                 'Rin' : 10, 
@@ -111,7 +110,7 @@ class Disk:
         inc : float, optional
             Inclination of the disk relative to the viewer [degrees], default is 0. 
         F_star : float
-            Emission from the star [microjy], default is 0
+            Emission from the star [Jy], default is 0
         radial_func : {'powerlaw', 'powerlaw_errf', 'double_powerlaw',
                        'triple_powerlaw'}, optional
             Functional form of the radial profile, default is 'powerlaw'
@@ -148,14 +147,13 @@ class Disk:
             if type(obs) == dict:
                 obs = Observation(**obs)
             self.obs = obs
-            self.modres = obs.imres * obs.distance * const.AU
-            # self.max_r = obs.distance * 8 * const.AU
+            self.modres = obs.imres * obs.distance * const.AU # modres [cm/pixel]; obs.imres is in arcsec/pixel, obs.distance is in pc, const.AU is cm/AU
             self.max_r = obs.distance * obs.beam_fwhm * 3600 * 180 / np.pi * const.AU
         else:
             self.modres = 0.5 * const.AU
             self.max_r = 50 * 8 * const.AU
         if rmax:
-            self.max_r = obs.distance * rmax * const.AU
+            self.max_r = obs.distance * rmax * const.AU # rmax in cm
 
         if 'Rin' in radial_params:
             if radial_params['Rin'] > radial_params['Rout']:
@@ -172,7 +170,7 @@ class Disk:
             self.inc = (180 - inc) * np.pi/180
 
         self.radial_func = radial_func
-        self.radial_params = self.rp_convert(radial_params.copy())
+        self.radial_params = self.rp_convert(radial_params.copy()) # convert params from AU to cm
         
         if rbounds:
             self.rbounds=rbounds.copy()
@@ -196,7 +194,7 @@ class Disk:
         if obs and calc_image:
             self._im(obs) # Integrate to find image
     
-    def rp_convert(self, radial_params):
+    def rp_convert(self, radial_params): # convert relevant params to cm
         def convert_func(func, params):
             if func == 'gaussian':
                 return profiles.gaussian.conversion(params, const.AU)
@@ -236,7 +234,7 @@ class Disk:
     def structure2d(self):
         """
         Initialize density and temperature structures
-        """#debug note: this function is running
+        """
         if self.rbounds:
             self.rbounds[0] *= const.AU
             self.rbounds[1] *= const.AU
@@ -245,21 +243,21 @@ class Disk:
 
         # Set number of pixels in 2d radial array to 5 times the desired final
         # image resolution
-        self.nr = int(5  * (self.rbounds[1] - self.rbounds[0]) / self.modres) 
+        self.nr = int(5  * (self.rbounds[1] - self.rbounds[0]) / self.modres) # modres in [cm]
 
         # Define radial sampling grid -- for 'powerlaw' profile use logspaced
         # grid, in all other cases use uniform sampling
-        self.r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr)
+        self.r = np.linspace(self.rbounds[0], self.rbounds[1], self.nr) # in [cm]
  
         # Calculates scale height as a function of r
         vert_struct = self.H(**self.vert_params)
 
         self._zmax(vert_struct[0]) # Find vertical extent
-        self.nz = int(5 * self.zmax / self.modres) # 5x final image resolution
+        self.nz = int(5 * self.zmax / self.modres) # 5x final image resolution, modres in [cm]
 
         self.z = np.linspace(0, self.zmax, self.nz)
         
-        rr, zz = np.meshgrid(self.r, self.z)
+        rr, zz = np.meshgrid(self.r, self.z) # rr, zz meshgrid in cm
         assert self._rho2d(rr, zz, vert_struct)  # create 2d disk density structure
         assert self._T2d(rr, zz) # Calculate 2d temperature array
         return True
@@ -344,7 +342,7 @@ class Disk:
         """
         
         # Radial x vertical density structure
-        self.rho2d = self.sigma(rr) * self.vert(zz, *vert_struct) 
+        self.rho2d = self.sigma(rr) * self.vert(zz, *vert_struct) # rr, zz in [cm], rho2d in g/cm^2
         np.nan_to_num(self.rho2d, nan=1e-60) # Check for nans
         return True
 
@@ -363,7 +361,7 @@ class Disk:
         self.r[i]
         """
 
-        def profile_from_func(radial_func, params):
+        def profile_from_func(radial_func, params): # params have been coverted to cm at this point (rr also in cm)
             if radial_func == 'powerlaw':
                 return profiles.powerlaw.val(rr, **params)
             
@@ -425,6 +423,7 @@ class Disk:
             val*=gap
             self.g = gap
 
+        
         self.sigma= self.sigma_crit * val
         return self.sigma_crit * val
 
@@ -450,12 +449,14 @@ class Disk:
         H2d = np.outer(np.ones(self.nz), H/(2*np.sqrt(2*np.log(2))))
         self.H2d= H2d
         if self.vert_func =='gaussian':
-            self.vert_arr = profiles.gaussian.val(zz, H2d)
+            normalize = profiles.gaussian.norm(H2d)
+            self.vert_arr = profiles.gaussian.val(zz, H2d)/normalize
  
         if self.vert_func =='lorentzian':
             self.vert_arr =  2*np.pi*profiles.gaussian.val(zz, H2d)/(Hnorm)
         
-        self.vert_arr /= np.outer(np.ones(self.nz), np.sum(self.vert_arr, axis=0))
+        # with new normalization included above, we don't need this line (leaving it here in case I'm having related issues later)
+        #self.vert_arr /= np.outer(np.ones(self.nz), np.sum(self.vert_arr, axis=0))
         return self.vert_arr
 
     def _T2d(self, rr, zz):
@@ -474,7 +475,7 @@ class Disk:
         """
         dist = np.sqrt((rr**2) + (zz**2))
         self.dist = dist
-        self.T2d = (self.L_star * const.Lsun / (16. * np.pi * (dist**2) * const.sigmaB))**0.25
+        self.T2d = (self.L_star * const.Lsun / (16. * np.pi * (dist**2) * const.sigmaB))**0.25 # all in cgs
         return True
 
     def incline(self):
@@ -557,19 +558,16 @@ class Disk:
         tau = cumtrapz(self.rho, self.S, axis=2, initial=0.)
         
         for n in obs.nu:
-            kap = 10 * (n/1e12)**const.beta
+            kap = 10 * (n/1e12)**const.beta # cm^2/g
             tau *= kap
 
-            # Knu_dust = kap*self.rho      # - dust absorbing coefficient
-            # Snu = BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
-
-            #arg = kap*self.rho*np.exp(-tau)*BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.) # - source function
             self.ims.append(Image(trapezoid(kap*self.rho*np.exp(-tau)*BBF1*n**3/(np.exp((BBF2*n)/self.T)-1.), 
-                                            self.S, 
+                                            self.S, # integrate over the whole disk (S is the distance from the center of the disk along the observer LOS)
                                             axis=2),
                                   obs.imres,
                                   modres=self.modres))
-            self.ims[-1].add_star(self.F_star)
+            # Initialization of image: input in [erg / (s cm^2 Hz ster)] but then immediately converted to Jy/ster in image.py
+            self.ims[-1].add_star(self.F_star) # add the star to the most recent image, also in Jy
 
     def square(self):
         """

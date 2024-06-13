@@ -34,19 +34,19 @@ class Image:
     """
 
     def __init__(self, val, imres=None, axes=None, modres=None):
-        self.val = val * 1e23 
+        self.val = val * 1e23 # Jy/ster
         
         self.nx = np.shape(val)[1]
         self.ny = np.shape(val)[0]
 
         if modres:
-            self.val *= modres*modres
+            self.val *= ((imres**2) / (const.rad)**2) # Started with Jy/ster, now in Jy/pixel
         if imres:
             self.imres = imres
 
         if axes:
-            self.x = axes[0]
-            self.y = axes[1]
+            self.x = axes[0] # array of x pixel values in arcsec
+            self.y = axes[1] # array of y pixel values in arcsec
         else:
             self._axes()
 
@@ -90,14 +90,14 @@ class Image:
         hdu.writeto(outfile, overwrite=True, output_verify='fix')
 
     def beam_corr(self, nu, D):
-        lamb = const.c / nu
+        lamb = (const.c/100) / nu # wavelength in [m]
         xx, yy = np.meshgrid(self.x, self.y)
-        dst = np.sqrt(xx**2+yy**2)
-        sigma = 1.13 * lamb / D / (2 * np.sqrt(2 * np.log(2)))
-
+        dst = np.sqrt(xx**2+yy**2) # in arcseconds
+        sigma = const.rad * 1.13 * lamb / D / (2 * np.sqrt(2 * np.log(2))) # in arcsec
         norm = profiles.gaussian.norm(dst, sigma)**2
         self.beam = profiles.gaussian.val(dst, sigma) 
         self.val *= self.beam
 
     def add_star(self, f_star):
-        self.val[int(self.ny/2), int(self.nx/2)] += f_star / 1e6
+        # add star at center of image
+        self.val[int(self.ny/2), int(self.nx/2)] += f_star # in Jy

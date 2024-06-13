@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 setup(name='debris_disk',
-    version='0.3.1',
+    version='0.4.0',
     description='Parametric modeling code for debris disks',
     url='https://github.com/briannazawadzki/debris_disk',
     packages=find_packages(include=['debris_disk']),

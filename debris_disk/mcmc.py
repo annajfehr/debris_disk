@@ -10,7 +10,6 @@ from debris_disk import Disk
 import debris_disk as DD
 from schwimmbad import MPIPool
 from emcee import EnsembleSampler
-#from memory_profiler import profile 
 
 class MCMC:
     """
@@ -39,14 +38,14 @@ class MCMC:
         
     """
     def __init__(self,
-                 uvdata, 
+                 uvdata, # data_fps_list to be turned into UVData object
                  obs_params,
-                 fixed_args,
-                 p0,
-                 pranges,
+                 fixed_args, # from param json
+                 p0, # from param json
+                 pranges, # from param json
                  name=None,
                  filetype='txt',
-                 pscale=None):
+                 pscale=None): # from param json
         self.uvdata=uvdata
         vis = DD.UVDataset(uvdata, filetype=filetype)
         self.obs_params = DD.Observation(vis=vis,
@@ -285,7 +284,6 @@ def check_boundary(ranges, pos):
 
     return True
 
-#@profile
 def lnpost(p,
            params,
            ranges,
@@ -315,16 +313,22 @@ def lnpost(p,
     disk_params['sigma_crit'] = 10 ** disk_params['sigma_crit']
     if verbose:
         print('DISK_PARAM = ', disk_params)
-        print('OBS_PARAM = ', viewing_params)
-
-    mod = Disk(obs=obs_params, **fixed_args, **disk_params)
+        print('VIEW_PARAM = ', viewing_params)
+    mod = Disk(obs=obs_params, F_star=viewing_params['F_star'], **fixed_args, **disk_params)
     
     if verbose:
         print('Generated model')
 
     if mode=='new':
         try:
+            # create a UVDataset from:
+            # - the text files we were using
+            # - the UVData instances we were using
+            # - the mrs and resolutions (in radials)
+            # - chans (in lambda [m])
+            # - freq (a single frequency as of 5/22/24)
             vis = DD.UVDataset(stored=uvdict)
+            # now get the model disk (initialized above) and compute chi2
             chi2 = vis.chi2(disk=mod, **viewing_params)
         except:
             if verbose:

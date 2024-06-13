@@ -6,7 +6,7 @@ import numpy as np
 
 class Observation:
     def __init__(self,
-                 nu = 345.8,
+                 nu = 338.225, # 338.225 from listobs, old was in as 345.8,
                  imres = 0.005,
                  distance = 100.,
                  vis=None,
@@ -17,7 +17,7 @@ class Observation:
                  D=12):
         if vis:
             self.nu = const.c / vis.chans
-            self.imres = min([np.min(res*(180/np.pi) * 3600/2) for res in vis.resolution])
+            self.imres = min([np.min(res*(180/np.pi) * 3600/2) for res in vis.resolution]) # in arcseconds
         else:
             self.nu = nu 
             self.imres=imres
@@ -28,7 +28,7 @@ class Observation:
             self.Lstar = sys_props[sys_name]['Lstar']['median']
         else:
             self.distance = distance
-        self.lamb = 3e8 / nu # wavelength [m]
+        self.lamb = const.c / (100*nu) # wavelength [m] (input c is in cm/s, divide by 100 to convert to m/s)
         self.D = D # antennae diameter [m]
         self.beam_fwhm = np.min(1.13 * self.lamb/self.D)
     
