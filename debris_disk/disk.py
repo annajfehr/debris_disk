@@ -218,6 +218,10 @@ class Disk:
                 return profiles.triple_gaussian.conversion(params, const.AU)
             if func == 'dpl_2gaussgaps':
                 return profiles.dpl_2gaussgaps.conversion(params, const.AU)
+            if func == 'tpl_1gaussgap':
+                return profiles.tpl_1gaussgap.conversion(params, const.AU)
+            if func == 'tpl_2gaussgaps':
+                return profiles.tpl_2gaussgaps.conversion(params, const.AU)
 
         if type(self.radial_func) is list:
             for i, func in enumerate(self.radial_func):
@@ -364,36 +368,30 @@ class Disk:
         def profile_from_func(radial_func, params): # params have been coverted to cm at this point (rr also in cm)
             if radial_func == 'powerlaw':
                 return profiles.powerlaw.val(rr, **params)
-            
             if radial_func == 'powerlaw_errf':
                 return profiles.powerlaw_errf.val(rr, **params)
-
             if radial_func == 'double_powerlaw':
                 return profiles.double_powerlaw.val(rr, **params)
-            
             if radial_func == 'triple_powerlaw':
                 return profiles.triple_powerlaw.val(rr, **params)
-
             if radial_func == 'gaussian':
                 return profiles.gaussian.val(rr, **params)
-            
             if radial_func == 'single_erf':
                 return profiles.single_erf.val(rr, **params)
-            
             if radial_func == 'asymmetric_gaussian':
                 return profiles.asymmetric_gaussian.val(rr, **params)
-            
             if radial_func == 'gauss_dpl':
                 return profiles.gauss_dpl.val(rr, **params)
-            
             if radial_func == 'double_gaussian':
                 return profiles.double_gaussian.val(rr, **params)
-            
             if radial_func == 'triple_gaussian':
                 return profiles.triple_gaussian.val(rr, **params)
-            
             if radial_func == 'dpl_2gaussgaps':
                 return profiles.dpl_2gaussgaps.val(rr, **params)
+            if radial_func == 'tpl_1gaussgap':
+                return profiles.tpl_1gaussgap.val(rr, **params)
+            if radial_func == 'tpl_2gaussgaps':
+                return profiles.tpl_2gaussgaps.val(rr, **params)
 
         if type(self.radial_func) == list:
             val = np.zeros(np.shape(rr))

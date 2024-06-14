@@ -234,6 +234,49 @@ class dpl_2gaussgaps:
         params['sigma2'] *= unit
         return params
 
+class tpl_1gaussgap:
+    def val(r, Rin, Rout, alpha_in, alpha_mid, alpha_out, gamma_in, gamma_out, R1, sigma1, C1=0.5):
+        tpl = triple_powerlaw.val(r, Rin, Rout, alpha_in, alpha_mid, alpha_out, gamma_in, gamma_out)
+        gap1 = gaussian.val(r, sigma1, R1)
+        return tpl-C1*gap1
+    
+    def limits(Rin, Rout, alpha_in, alpha_mid, alpha_out, gamma_in, gamma_out):
+        assert alpha_in > 0, "alpha_in must be positive to find inner edge"
+        assert alpha_out < 0, "alpha_out must be negative to find outer edge"
+        rmin = Rin - (1000/((alpha_in + 8.61)**(5/4)))
+        rmax = Rout + 5.28e15 + 2.94*(alpha_out**2) + 58.5*alpha_out
+        return [min(rmin, 0), rmax]
+    
+    def conversion(params, unit):
+        params['Rin'] *= unit
+        params['Rout'] *= unit
+        params['R1'] *= unit
+        params['sigma1'] *= unit
+        return params
+
+class tpl_2gaussgaps:
+    def val(r, Rin, Rout, alpha_in, alpha_mid, alpha_out, gamma_in, gamma_out, R1, R2, sigma1, sigma2, C1=0.5, C2=0.5):
+        tpl = triple_powerlaw.val(r, Rin, Rout, alpha_in, alpha_mid, alpha_out, gamma_in, gamma_out)
+        gap1 = gaussian.val(r, sigma1, R1)
+        gap2 = gaussian.val(r, sigma2, R2)
+        return tpl-C1*gap1-C2*gap2
+    
+    def limits(Rin, Rout, alpha_in, alpha_mid, alpha_out, gamma_in, gamma_out):
+        assert alpha_in > 0, "alpha_in must be positive to find inner edge"
+        assert alpha_out < 0, "alpha_out must be negative to find outer edge"
+        rmin = Rin - (1000/((alpha_in + 8.61)**(5/4)))
+        rmax = Rout + 5.28e15 + 2.94*(alpha_out**2) + 58.5*alpha_out
+        return [min(rmin, 0), rmax]
+    
+    def conversion(params, unit):
+        params['Rin'] *= unit
+        params['Rout'] *= unit
+        params['R1'] *= unit
+        params['sigma1'] *= unit
+        params['R2'] *= unit
+        params['sigma2'] *= unit
+        return params
+
 class constant:
     def val(x, c):
         return c * x / x
