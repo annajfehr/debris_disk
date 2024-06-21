@@ -49,8 +49,8 @@ class MCMC:
         self.uvdata=uvdata
         vis = DD.UVDataset(uvdata, filetype=filetype)
         self.obs_params = DD.Observation(vis=vis,
-                                         json_file='/arc/projects/ARKS/parametric_modeling/REASONS.json',
-                                         #json_file='/Volumes/disks/brianna/REASONS.json', # for kazul/katsa versions
+                                         #json_file='/arc/projects/ARKS/parametric_modeling/REASONS.json',
+                                         json_file='/Volumes/disks/brianna/REASONS.json', # for kazul/katsa versions
                                          #json_file='/zfshomes/bzawadzki/REASONS.json', # for Wes cluster version
                                          sys_name=name)
         self.vis = vis.__dict__

@@ -216,6 +216,8 @@ class Disk:
                 return profiles.double_gaussian.conversion(params, const.AU)
             if func == 'triple_gaussian':
                 return profiles.triple_gaussian.conversion(params, const.AU)
+            if func == 'dpl_1gaussgap':
+                return profiles.dpl_1gaussgap.conversion(params, const.AU)
             if func == 'dpl_2gaussgaps':
                 return profiles.dpl_2gaussgaps.conversion(params, const.AU)
             if func == 'tpl_1gaussgap':
@@ -386,6 +388,8 @@ class Disk:
                 return profiles.double_gaussian.val(rr, **params)
             if radial_func == 'triple_gaussian':
                 return profiles.triple_gaussian.val(rr, **params)
+            if radial_func == 'dpl_1gaussgap':
+                return profiles.dpl_1gaussgap.val(rr, **params)
             if radial_func == 'dpl_2gaussgaps':
                 return profiles.dpl_2gaussgaps.val(rr, **params)
             if radial_func == 'tpl_1gaussgap':
