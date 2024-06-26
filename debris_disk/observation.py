@@ -6,7 +6,7 @@ import numpy as np
 
 class Observation:
     def __init__(self,
-                 nu = 338.225, # 338.225 from listobs, old was in as 345.8,
+                 nu = np.array([338.225]), # 338.225 from listobs, old was in as 345.8,
                  imres = 0.005,
                  distance = 100.,
                  vis=None,
