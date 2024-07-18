@@ -4,22 +4,24 @@ Produce synthetic images and visibilities of disk structure from a radial, verti
 ```python
 import debris_disk as DD
 
-obs_params = {'nu' : 345.8, # ghz
-              'imres' : 0.005 # arcsec / pixel
-              'PA' : # degrees
+obs_params = {'nu' : [3.451e11], # hz
+              'imres' : 0.01, # arcsec / pixel
+              'PA' : 0., # degrees
               'distance' : 100} # parsecs
 
-rad_params = {'alpha' : 2.2,
-              'Rin' : 22 * DD.constants.AU,
-              'Rout' : 42 * DD.constants.AU}
+rad_params = {'alpha' : 2.0,
+              'Rin' : 22 * DD.constants.AU, # cm
+              'Rout' : 42 * DD.constants.AU} # cm
 
 model = DD.Disk(Lstar=1., # L_sun
-                sigma_crit=1e-7, # g/m^2
+                sigma_crit=1e-5, # g/cm^2
                 inc=88.5, # Degrees
                 radial_func='powerlaw', # options: double_powerlaw,
                                         # triple_powerlaw, gaussian
                 radial_params=rad_params,
-                aspect_ratio = 0.025,
+                vert_params={'Hc' : 0.03,
+                             'Rc' : 1.,
+                             'psi' : 1.,
                 vert_func='gaussian',
                 obs=obs_params)
 
