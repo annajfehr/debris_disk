@@ -160,7 +160,7 @@ class Disk:
             # self.max_r = obs.distance * 8 * const.AU
             self.max_r = obs.distance * obs.beam_fwhm * 3600 * 180 / np.pi * const.AU
         else:
-            self.modres = 5 * const.AU
+            self.modres = 0.5 * const.AU
             self.max_r = 50 * 8 * const.AU
         if rmax:
             self.max_r = obs.distance * rmax * const.AU
@@ -355,6 +355,7 @@ class Disk:
         
         # Radial x vertical x azimuthal density structure
         self.rho2d = self.sigma(aa) * self.vert(zz, *vert_struct) * self.sigphi(aa, pp)
+        
         np.nan_to_num(self.rho2d, nan=1e-60) # Check for nans
         return True
 
@@ -435,7 +436,7 @@ class Disk:
         zz : array of floats
             an nr x nz array of distances from the disk midplane
         H : array of floats
-            len nr array containing disk scale height
+     H       len nr array containing disk scale height
         Hnorm : float
             integral of H
 
@@ -445,13 +446,16 @@ class Disk:
         profile at (self.r[i], self.z[j])
         """
 
+        H2d = H[:] / (2*np.sqrt(2*np.log(2)))
+        self.H2d= H2d
         if self.vert_func =='gaussian':
-            self.vert_arr = profiles.gaussian.val(zz, H)
+            normalize = profiles.gaussian.norm(H2d)
+            self.vert_arr = profiles.gaussian.val(zz, H2d)/normalize
  
         if self.vert_func =='lorentzian':
             self.vert_arr =  2*np.pi*profiles.gaussian.val(zz, H2d)/(Hnorm)
 
-        self.vert_arr /= np.outer(np.sum(self.vert_arr, axis=2), np.ones(self.nz)).reshape((self.na, self.na, self.nz))
+        #self.vert_arr /= np.outer(np.sum(self.vert_arr, axis=2), np.ones(self.nz)).reshape((self.na, self.na, self.nz))
         return self.vert_arr
 
     def sigphi(self, aa, pp):
@@ -474,7 +478,7 @@ class Disk:
 
         # Equation from ???
         dsdth = (aa*(1-self.ecc*self.ecc)*np.sqrt(1+2*self.ecc*np.cos(pp)+self.ecc*self.ecc))/(1+self.ecc*np.cos(pp))**2
-        return (np.sqrt(1.-self.ecc*self.ecc))/(2*np.pi*aa*np.sqrt(1+2*self.ecc*np.cos(pp)+self.ecc*self.ecc))*dsdth
+        return (np.sqrt(1.-self.ecc*self.ecc))/(aa*np.sqrt(1+2*self.ecc*np.cos(pp)+self.ecc*self.ecc))*dsdth
     
     def _T2d(self, rr, zz):
         """
@@ -554,6 +558,7 @@ class Disk:
         self.T=ndimage.map_coordinates(self.T2d,[[aind],[phiind],[zind]],order=5).reshape(self.nY,self.nX, nS) # Map from P x R x Z to X x Y x S
         self.T[self.T<=0] = np.min(self.T2d)
         self.rho=ndimage.map_coordinates(self.rho2d,[[aind],[phiind],[zind]],order=5).reshape(self.nY, self.nX, nS)  
+        
         
         assert np.shape(self.S) == np.shape(self.T)
         assert np.shape(self.S) == np.shape(self.rho)
